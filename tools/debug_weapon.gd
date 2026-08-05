@@ -90,11 +90,14 @@ func _verify_load(pivot: Node) -> void:
 
 
 ## D2：注入按住左键 + 连发轮询 HOLD_SECONDS 秒，弹药应只按 fire_rate 消耗
+## 注：_poll_auto_fire 只对**当前激活武器**连发（切枪后按住开火才是真实 gameplay），
+##     测试必须先切到目标武器再注入按住，否则激活的仍是 Pistol（auto=false）→ 目标 0 发
 func _verify_auto_hold(player: Node, node_name: String, expect_rate: float) -> void:
 	var weapon := player.get_node_or_null("WeaponPivot/" + node_name)
 	if weapon == null:
 		_fail("no weapon node " + node_name)
 		return
+	_activate_weapon(player, weapon)
 	_reset_weapon(weapon)
 	player.set("_fire_held", true)
 	var start_mag: int = weapon.get("mag_current")
@@ -117,6 +120,7 @@ func _verify_semi_hold(player: Node, node_name: String) -> void:
 	if weapon == null:
 		_fail("no weapon node " + node_name)
 		return
+	_activate_weapon(player, weapon)
 	_reset_weapon(weapon)
 	player.set("_fire_held", true)
 	var start_mag: int = weapon.get("mag_current")
@@ -147,6 +151,15 @@ func _verify_empty_reload(player: Node) -> void:
 	print("[RELOAD] mag=%d reloading=%s (expect 0/true)" % [mag, reloading])
 	if mag != 0 or not reloading:
 		_fail("auto reload on empty mag failed mag=%d reloading=%s" % [mag, reloading])
+
+
+## 切到指定武器（补齐注入前的激活步骤：_poll_auto_fire 只对当前激活武器连发）
+func _activate_weapon(player: Node, weapon: Node) -> void:
+	var weapons: Array = player.get("_weapons")
+	for i in weapons.size():
+		if weapons[i] == weapon:
+			player._set_active_weapon(i)
+			return
 
 
 ## 重置武器状态：补满弹匣、清除换弹与射速冷却（避免串测残留）

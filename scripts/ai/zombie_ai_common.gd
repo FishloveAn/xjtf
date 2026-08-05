@@ -51,7 +51,9 @@ func _ready() -> void:
 	if _body == null:
 		return
 	var health := get_node_or_null("../Health") as Damageable
-	if health != null:
+	# 幂等（M3-S1 回归）：对象池复用节点出池时 request_ready() 会让 _ready 每次重跑，
+	# died 连接与同步器配置必须判重/判空，否则重复连接导致 _on_died 双跑、重复回池
+	if health != null and not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
 	_setup_sync()
 
@@ -279,6 +281,9 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 func _setup_sync() -> void:
 	var sync := _body.get_node_or_null("ZombieSync") as MultiplayerSynchronizer
 	if sync == null:
+		return
+	# 幂等（M3-S1 回归）：_ready 每次出池重跑，同步器配置只在首次初始化一次（防重复重建配置）
+	if sync.replication_config != null:
 		return
 	sync.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	var cfg := SceneReplicationConfig.new()

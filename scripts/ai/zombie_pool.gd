@@ -69,7 +69,11 @@ func spawn_from_pool(pos: Vector3) -> Node3D:
 	var z: Node3D = _pool.pop_back()
 	_reset_zombie(z)
 	z.set_multiplayer_authority(NetworkManager.SERVER_ID)
-	_zombies.add_child(z)
+	# request_ready：Godot 4 的 ready 信号每个节点一生只发一次（ready_first 出树不重置），
+	# 回池 remove_child→再出池 add_child 时不再发 ready，MultiplayerSpawner 的 spawn_queue
+	# 卡住报 "ready' signal was not emitted"（M3-S1 波次回归）；request_ready() 使复用节点重发。
+	z.request_ready()
+	_zombies.add_child(z, true)  # 强制可读名：池节点经 instantiate() 是 @ 保留名，MultiplayerSpawner auto-spawn 会失败
 	z.global_position = pos  # 先入树再设 global_position（4.7 实测：未入树设会触发错误）
 	_active.append(z)
 	return z

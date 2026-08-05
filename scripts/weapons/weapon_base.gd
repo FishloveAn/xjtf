@@ -174,11 +174,13 @@ func request_reload() -> void:
 func _server_fire(origin: Vector3, dir: Vector3) -> void:
 	if reloading:
 		return
+	# 空仓自动换弹先于冷却检查（M3-S1 回归）：打出最后一发后冷却被置位，若先查冷却，
+	# 紧接着的开火请求会在冷却处提前返回，永远到不了空仓分支 → 空仓不自动换弹
+	if mag_current <= 0:
+		_server_start_reload()
+		return
 	if _cooldown_timer > 0.0:
 		return  # 射速冷却（fire_rate）
-	if mag_current <= 0:
-		_server_start_reload()  # 打空自动换弹
-		return
 	mag_current -= 1
 	_cooldown_timer = _fire_interval
 	var player := _get_player()

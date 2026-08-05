@@ -137,6 +137,6 @@ static func _spawn(container: Node, spots: Array, idx: int, stype: Type) -> void
 	var s := scene.instantiate() as Node3D
 	s.set("supply_type", stype)
 	s.set_multiplayer_authority(NetworkManager.SERVER_ID)  # 先设权威再入树（生成包携带 authority）
-	container.add_child(s)
+	container.add_child(s, true)  # 强制可读名：instantiate() 节点是 @ 保留名，MultiplayerSpawner auto-spawn 会失败（M3-S1 回归）
 	if not spots.is_empty():
 		s.global_position = (spots[idx % spots.size()] as Node3D).global_position
