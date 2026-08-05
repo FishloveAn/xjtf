@@ -1,0 +1,18 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+[SIM] === LAN_SIM START role=server mode=disconnect ===
+[SIM][PASS] B1 建房 create_host(5555)  err=0
+ERROR: Node not found: "Main" (relative to "/root").
+   at: get_node (scene/main/node.cpp:1975)
+ERROR: Parameter "node" is null.
+   at: process_simplify_path (modules/multiplayer/scene_cache_interface.cpp:118)
+ERROR: Node not found: "Main" (relative to "/root").
+   at: get_node (scene/main/node.cpp:1975)
+ERROR: Failed to get path from RPC: Main.
+   at: _process_get_node (modules/multiplayer/scene_rpc_interface.cpp:148)
+ERROR: Invalid packet received. Requested node was not found.
+   at: process_rpc (modules/multiplayer/scene_rpc_interface.cpp:211)
+[SIM][PASS] B3/B5 客户端接入互见
+[SIM][PASS] B7 检测到客户端断线
+[SIM][PASS] B7 断线清理玩家不崩  players=1
+[SIM] === LAN_SIM RESULT role=server mode=disconnect PASS=4 FAIL=0 ===

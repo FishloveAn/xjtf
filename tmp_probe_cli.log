@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ERROR: Condition "!node || !sync->get_replication_config_ptr()" is true. Returning: ERR_UNCONFIGURED
+   at: on_replication_start (modules/multiplayer/scene_replication_interface.cpp:251)
+ERROR: The MultiplayerSynchronizer at path "/root/Main/Players/Player_864486146/PlayerSync" is unable to process the pending spawn since it has no network ID. This might happen when changing the multiplayer authority during the "_ready" callback. Make sure to only change the authority of multiplayer synchronizers during the "_enter_tree" callback of their multiplayer spawner.
+   at: on_replication_start (modules/multiplayer/scene_replication_interface.cpp:242)
+ERROR: Condition "!node || !sync->get_replication_config_ptr()" is true. Returning: ERR_UNCONFIGURED
+   at: on_replication_start (modules/multiplayer/scene_replication_interface.cpp:251)
+[probe2] client players=3
+[probe2]   player name=Player_1 auth=1
+[probe2]   player name=Player_864486146 auth=1
+[probe2]   player name=TestPlayer auth=1

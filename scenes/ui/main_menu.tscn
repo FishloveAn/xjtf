@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_menu")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "星际土匪"
+horizontal_alignment = 1
+
+[node name="IpLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "服务器 IP："
+
+[node name="IpEdit" type="LineEdit" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "127.0.0.1"
+
+[node name="PortLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "端口："
+
+[node name="PortEdit" type="LineEdit" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "5555"
+
+[node name="HostButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "创建主机"
+
+[node name="JoinButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "加入游戏"
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1

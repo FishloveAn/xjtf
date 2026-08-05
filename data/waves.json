@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "note": "波次配置表（M2 预制作草案，2026-08-04，待平衡）。字段照 tech-plan §7.2：id/name/composition/concurrent_cap/spawn_style/spawn_interval/cleared_when/reward。composition 为该波总刷怪数（按类型），单波总和 ≤ 30（M2 同屏目标，tech-plan §10）；3 波递进 10→18→30，末波峰值 30 覆盖'同屏 30 只'验收。concurrent_cap 为该波同屏上限：波 1/波 3 = 全量在场，波 2 < 总量体现渐进刷怪。spawn_style：trickle=渐进流出 / burst=一波涌入；spawn_interval 单位=秒（base，Director 会按压力缩放，tech-plan §7.3）。cleared_when 本阶段统一 all_spawned_killed（全部刷出且杀光）。reward 于 M2-S4 启用：Intermission 时 WaveManager 按 health_packs/ammo 数量在 supply_spot 固定点刷新对应类型补给点（数据驱动，改数量即改补给密度，S4 2026-08-05）。",
+  "waves": [
+    {
+      "id": "wave_01",
+      "name": "试探",
+      "composition": { "common": 10 },
+      "concurrent_cap": 10,
+      "spawn_style": "trickle",
+      "spawn_interval": 3.0,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 0, "ammo": 1 }
+    },
+    {
+      "id": "wave_02",
+      "name": "警戒",
+      "composition": { "common": 18 },
+      "concurrent_cap": 12,
+      "spawn_style": "trickle",
+      "spawn_interval": 2.0,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 1, "ammo": 1 }
+    },
+    {
+      "id": "wave_03",
+      "name": "潮涌",
+      "composition": { "common": 30 },
+      "concurrent_cap": 30,
+      "spawn_style": "burst",
+      "spawn_interval": 1.2,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 2, "ammo": 2 }
+    }
+  ]
+}

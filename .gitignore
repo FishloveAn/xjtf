@@ -1,0 +1,22 @@
+# Godot 4+ 生成目录与导入缓存
+.godot/
+*.import
+*.translation
+
+# 导出产物（M3 再启用，先保留配置可提交）
+export/
+export_presets.cfg
+
+# 操作系统杂项
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# 本机工作区状态（不属于项目资源）
+.workbuddy/
+.git.bak-*

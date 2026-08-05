@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "note": "武器参数表（M1 预制作草案 2026-08-04，M3 预制作追加 rifle/smg 2026-08-05）。武器条目字段照 tech-plan §6.2：id/damage/fire_rate/mag_size/reload_time/spread_deg/range_m/auto/sound/muzzle_offset。扩展字段：name_zh=中文显示名(HUD/切枪用)，pellets=霰弹单次散射弹丸数(仅霰弹)，auto=连发(按住持续开火，步枪/冲锋枪 M3-S1 启用)。数值为 L4D 类常识初值，待平衡。fire_rate 单位=发/秒；sound 路径相对 assets/audio/（命名见 02-设计-音频方向.md §4.4）；muzzle_offset 单位=米，相对 WeaponPivot。设计侧建议：普通丧尸血量 100（data/zombies.json）→ 手枪约 4 枪/只、霰弹近身约 1 枪/只、步枪约 5 枪/只（22×7 中距压制）、冲锋枪约 8 枪/只（14×10 大弹匣扫射换精度）。",
+  "weapons": [
+    {
+      "id": "pistol",
+      "name_zh": "手枪",
+      "damage": 25,
+      "fire_rate": 5.0,
+      "mag_size": 12,
+      "reload_time": 1.2,
+      "spread_deg": 1.5,
+      "range_m": 60.0,
+      "auto": false,
+      "sound": "sfx/sfx_weapon_pistol_fire_01.wav",
+      "muzzle_offset": [0.0, -0.02, -0.4]
+    },
+    {
+      "id": "shotgun",
+      "name_zh": "霰弹枪",
+      "damage": 13,
+      "fire_rate": 1.2,
+      "mag_size": 6,
+      "reload_time": 2.2,
+      "spread_deg": 8.0,
+      "range_m": 25.0,
+      "auto": false,
+      "sound": "sfx/sfx_weapon_shotgun_fire_01.wav",
+      "muzzle_offset": [0.0, -0.02, -0.45],
+      "pellets": 8
+    },
+    {
+      "id": "rifle",
+      "name_zh": "步枪",
+      "damage": 22,
+      "fire_rate": 7.0,
+      "mag_size": 30,
+      "reload_time": 2.0,
+      "spread_deg": 2.5,
+      "range_m": 80.0,
+      "auto": true,
+      "sound": "sfx/sfx_weapon_rifle_fire_01.wav",
+      "muzzle_offset": [0.0, -0.02, -0.45]
+    },
+    {
+      "id": "smg",
+      "name_zh": "冲锋枪",
+      "damage": 14,
+      "fire_rate": 10.0,
+      "mag_size": 50,
+      "reload_time": 1.8,
+      "spread_deg": 3.5,
+      "range_m": 45.0,
+      "auto": true,
+      "sound": "sfx/sfx_weapon_smg_fire_01.wav",
+      "muzzle_offset": [0.0, -0.02, -0.45]
+    }
+  ]
+}

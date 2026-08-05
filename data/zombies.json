@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "note": "丧尸参数表（M3 预制作草案，2026-08-05，待平衡）。字段说明：hp=血量；move_speed=移动速度(米/秒)；turn_interval_s=朝向重算间隔(秒, 普通丧尸简化导航, tech-plan §5.4)；attack.range_m=近战攻击距离、damage=单次伤害、windup_s=前摇(秒)、cooldown_s=攻击冷却(秒)；chase_range_m=追击范围(米)、sight_range_m=感知距离(米)；die_clear_s=死亡表现清理时间(秒, 对象池回池计时)。special 为特感专属行为参数：charger(冲撞者)=直线冲撞+击倒压制；spitter(喷吐者)=远距吐酸+酸液地面伤害。改名避版权(GDD 附录 A)：冲撞者=Charger 原型、喷吐者=Spitter 原型，仅借鉴机制，名称/外观自创。common 数值与 M1/M2 实现口径对齐(hp 100/攻击 8/速度 3.0)；特感数值为 L4D 原型常识初值，全部待平衡。M3-S2 起普通丧尸参数迁移为数据驱动(替代 M1 硬编码)。",
+  "zombies": [
+    {
+      "id": "common",
+      "name_zh": "普通丧尸",
+      "hp": 100,
+      "move_speed": 3.0,
+      "turn_interval_s": 1.5,
+      "attack": {
+        "range_m": 1.6,
+        "damage": 8,
+        "windup_s": 0.4,
+        "cooldown_s": 1.0
+      },
+      "chase_range_m": 40.0,
+      "sight_range_m": 25.0,
+      "die_clear_s": 1.5
+    },
+    {
+      "id": "charger",
+      "name_zh": "冲撞者",
+      "hp": 600,
+      "move_speed": 2.4,
+      "turn_interval_s": 1.0,
+      "attack": {
+        "range_m": 2.0,
+        "damage": 20,
+        "windup_s": 0.5,
+        "cooldown_s": 1.5
+      },
+      "chase_range_m": 50.0,
+      "sight_range_m": 30.0,
+      "special": {
+        "type": "charge",
+        "charge_windup_s": 0.7,
+        "charge_speed_mps": 16.0,
+        "charge_range_m": 30.0,
+        "charge_min_range_m": 6.0,
+        "pin_duration_s": 2.5,
+        "stagger_after_s": 1.0,
+        "cooldown_s": 8.0
+      },
+      "die_clear_s": 2.5
+    },
+    {
+      "id": "spitter",
+      "name_zh": "喷吐者",
+      "hp": 150,
+      "move_speed": 2.0,
+      "turn_interval_s": 1.0,
+      "attack": {
+        "range_m": 1.2,
+        "damage": 5,
+        "windup_s": 0.3,
+        "cooldown_s": 1.5
+      },
+      "chase_range_m": 45.0,
+      "sight_range_m": 30.0,
+      "keep_distance_m": 14.0,
+      "special": {
+        "type": "spit",
+        "spit_windup_s": 0.8,
+        "spit_range_m": 25.0,
+        "spit_min_range_m": 8.0,
+        "spit_lead_seconds": 0.6,
+        "acid": {
+          "radius_m": 2.5,
+          "duration_s": 6.0,
+          "dps": 10.0
+        },
+        "cooldown_s": 4.0
+      },
+      "die_clear_s": 2.5
+    }
+  ]
+}

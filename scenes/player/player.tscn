@@ -1,0 +1,54 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player/player_state.gd" id="2_player_state"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/pistol.tscn" id="3_pistol"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/shotgun.tscn" id="4_shotgun"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/rifle.tscn" id="5_rifle"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/smg.tscn" id="6_smg"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.2, 0.45, 1, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.4
+height = 1.8
+material = SubResource("StandardMaterial3D_body")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
+radius = 0.4
+height = 1.8
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_player")
+
+[node name="Head" type="Node3D" parent="."]
+position = Vector3(0, 1.6, 0)
+
+[node name="Camera" type="Camera3D" parent="Head"]
+
+[node name="Body" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_collision")
+
+[node name="PlayerSync" type="MultiplayerSynchronizer" parent="."]
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_player_state")
+
+[node name="HealthSync" type="MultiplayerSynchronizer" parent="Health"]
+
+[node name="WeaponPivot" type="Node3D" parent="."]
+position = Vector3(0, 1.55, -0.3)
+
+[node name="Pistol" parent="WeaponPivot" instance=ExtResource("3_pistol")]
+
+[node name="Shotgun" parent="WeaponPivot" instance=ExtResource("4_shotgun")]
+
+[node name="Rifle" parent="WeaponPivot" instance=ExtResource("5_rifle")]
+
+[node name="SMG" parent="WeaponPivot" instance=ExtResource("6_smg")]

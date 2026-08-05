@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "note": "导演系统参数（M2 预制作草案，2026-08-04，待平衡）。字段照 tech-plan §7.3：pressure = clamp(0.4*(1-存活玩家占比) + 0.3*(1-场上丧尸/上限) + 0.3*(本波已过时间/期望时长), 0, 1)，每 update_interval_s 重算。spawn_interval = base_interval * (spawn_interval.max_scale - pressure)，结果钳制在 min_s/max_s。pressure > specials.threshold 允许刷特感——M2 无特感，specials.enabled=false 结构占位（M3 启用）。degrade 为降级开关（tech-plan §11 风险1：同屏超阈值自动削减刷怪），M2 可关。数值为 L4D 类常识初值。",
+  "update_interval_s": 0.5,
+  "pressure_weights": {
+    "player_alive": 0.4,
+    "zombie_depletion": 0.3,
+    "time_elapsed": 0.3
+  },
+  "expected_wave_duration_s": 90.0,
+  "spawn_interval": {
+    "max_scale": 1.6,
+    "min_s": 0.5,
+    "max_s": 5.0
+  },
+  "specials": {
+    "enabled": false,
+    "threshold": 0.7,
+    "max_simultaneous": 0,
+    "cooldown_s": 30.0
+  },
+  "degrade": {
+    "enabled": false,
+    "max_concurrent": 30
+  }
+}

@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+[SIM] === LAN_SIM START role=server mode=main ===
+[SIM][PASS] B1 建房 create_host(5555)  err=0
+[Director] pressure=0.27 spawn_interval=3.90s wave_elapsed=0.6s (specials=false degrade=false)
+[Director] pressure=0.26 spawn_interval=3.95s wave_elapsed=5.6s (specials=false degrade=false)
+[SIM][FAIL] B3 加入列表/玩家2出现  peers=0
+[SIM][FAIL] B4 双人同进主场景  
+[SIM][FAIL] B5 服务器看到玩家2  
+[SIM] === LAN_SIM RESULT role=server mode=main PASS=1 FAIL=3 ===
