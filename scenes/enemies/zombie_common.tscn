@@ -1,12 +1,13 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/zombie_ai_common.gd" id="1_ai"]
 [ext_resource type="Script" path="res://scripts/enemies/zombie_health.gd" id="2_health"]
 [ext_resource type="Script" path="res://scripts/core/hitbox.gd" id="3_hitbox"]
 [ext_resource type="PackedScene" path="res://scenes/fx/blood_puff.tscn" id="4_blood_puff"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/char_zombie_common_01.glb" id="5_zombie"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_zombie"]
-albedo_color = Color(0.25, 0.7, 0.3, 1)
+albedo_color = Color(0.54, 0.48, 0.4, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_visual"]
 size = Vector3(0.6, 0.9, 0.35)
@@ -23,9 +24,9 @@ radius = 1.8
 collision_layer = 4
 collision_mask = 5
 
-[node name="Visual" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.95, 0)
-mesh = SubResource("BoxMesh_visual")
+[node name="Visual" parent="." instance=ExtResource("5_zombie")]
+position = Vector3(0, 0, 0)
+scale = Vector3(1.45, 1.45, 1.45)
 
 [node name="BloodPuff" parent="." instance=ExtResource("4_blood_puff")]
 position = Vector3(0, 1.0, 0)
