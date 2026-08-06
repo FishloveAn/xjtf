@@ -483,6 +483,8 @@ func level_wave_cleared(wave_id: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func wave_started(index: int, wname: String, countdown: float) -> void:
 	event_wave_started.emit(index, wname, countdown)
+	# M3-S7：尸潮警报（波次预告/高潮触发，全端本地播放，非定位 2D；素材缺失静默跳过）
+	SfxPool.play_2d("wave_alarm")
 
 
 @rpc("authority", "call_local", "reliable")

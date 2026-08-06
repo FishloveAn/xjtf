@@ -1,6 +1,7 @@
 ## zombie_ai_common.gd — 普通丧尸状态机（Idle/Chase/Attack/Dead，tech-plan §5.4）
 ## 简化导航 + 分帧 AI 预算（director.json ai_budget 可配）+ 服务器权威死亡回池；
 ## 仅服务器执行；reset_for_pool 由 ZombiePool 回池调用（复位不彻底=死尸复活）
+## M3-S7：追踪嘶吼拆独立文件 zombie_growl.gd（防本文件超 300 行，M3-S4 拆 budget 先例）
 
 class_name ZombieAI
 extends Node
@@ -41,6 +42,7 @@ func _ready() -> void:
 	_body = get_parent() as CharacterBody3D
 	if _body == null:
 		return
+	_ensure_growl_ctrl()  # M3-S7：嘶吼控制器挂接（幂等：复用节点仅重设随机相位）
 	var health := get_node_or_null("../Health") as Damageable
 	# 幂等（M3-S1 回归）：request_ready 每次重跑，died 连接/同步器配置须判重（防重复回池）
 	if health != null and not health.died.is_connected(_on_died):
@@ -279,6 +281,16 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 	if pos == Vector3.ZERO:
 		pos = _body.global_position
 	SfxPool.play_3d(event, pos)
+
+
+## 嘶吼控制器挂接（M3-S7，独立文件 zombie_growl.gd）：幂等，_ready 每次出池重跑仅重设随机相位
+func _ensure_growl_ctrl() -> void:
+	var ctrl := get_node_or_null("GrowlCtrl") as ZombieGrowl
+	if ctrl == null:
+		ctrl = ZombieGrowl.new()
+		ctrl.name = "GrowlCtrl"
+		add_child(ctrl)
+	ctrl.setup(self, _body)
 
 
 ## 配置服务器权威 transform 同步（4.7 铁律：先 add_property 再 set_replication_mode；replication_interval 非 sync_interval）

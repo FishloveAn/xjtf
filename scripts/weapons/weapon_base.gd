@@ -36,6 +36,8 @@ const HIT_MASK := 1 | 3
 var _fire_interval := 0.0   # 1 / fire_rate
 var _cooldown_timer := 0.0  # 射速冷却（服务器）
 var _reload_timer := 0.0    # 换弹计时（服务器）
+## 换弹音监听（M3-S7）：reloading 同步翻转 → 全端本地播 weapon_reload/reload_done（初始化与之一致防误触发）
+var _prev_reloading := false
 
 @onready var _weapon_sync: MultiplayerSynchronizer = $WeaponSync
 
@@ -45,11 +47,13 @@ func _ready() -> void:
 	set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_load_weapon_data()
 	mag_current = mag_size
+	_prev_reloading = reloading
 	_setup_sync()
 
 
 func _process(delta: float) -> void:
 	if not NetworkManager.is_server():
+		_watch_reload_state()  # 客户端：reloading 同步翻转 → 播换弹音（收到广播才播，不本地猜）
 		return
 	if _cooldown_timer > 0.0:
 		_cooldown_timer = maxf(_cooldown_timer - delta, 0.0)
@@ -58,6 +62,7 @@ func _process(delta: float) -> void:
 		if _reload_timer <= 0.0:
 			reloading = false
 			mag_current = mag_size
+	_watch_reload_state()
 
 
 ## 配置弹药/换弹同步（4.7 铁律：先 add_property 再 set_replication_mode；replication_interval 非 sync_interval）
@@ -122,6 +127,14 @@ func try_fire() -> void:
 		return
 	var origin := _get_aim_origin()
 	var dir := _get_aim_dir()
+	# 空仓点击（M3-S7）：弹匣空 → 只播"咔"声不打枪声；请求仍发送（服务器 _server_fire 走自动换弹）
+	if mag_current <= 0:
+		_play_sfx("weapon_empty")
+		if NetworkManager.is_server():
+			_server_fire(origin, dir)
+		else:
+			request_fire.rpc_id(NetworkManager.SERVER_ID, origin, dir, -1)
+		return
 	_on_fire_visual()  # S3 占位；S6/S7 接枪口火花/音效
 	if NetworkManager.is_server():
 		_server_fire(origin, dir)  # 单机/主机：直接本地执行服务器逻辑
@@ -224,6 +237,15 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 	if pos == Vector3.ZERO:
 		pos = global_position
 	SfxPool.play_3d(event, pos)
+
+
+## 换弹音监听（M3-S7）：reloading 翻转 → 播开始/上膛音。服务器状态更新后与客户端同步值落位后各自本地播
+func _watch_reload_state() -> void:
+	if reloading and not _prev_reloading:
+		_play_sfx("weapon_reload")
+	elif not reloading and _prev_reloading:
+		_play_sfx("weapon_reload_done")
+	_prev_reloading = reloading
 
 
 ## 服务器：开始换弹
