@@ -1,14 +1,6 @@
-## zombie_ai_common.gd — 普通丧尸三态状态机（Idle/Chase/Attack/Dead，tech-plan §5.4）
-## 职责：简化导航（直线朝向 + 1.5s 重算朝向 + CharacterBody move_and_slide 撞墙，互相推挤=丧尸海观感）；
-##       追踪最近玩家；近战攻击（对 PlayerState.take_damage，服务器权威）；
-##       分帧预算（每物理帧 ≤ MAX_AI_PER_FRAME 只，其余轮询，防一帧卡死）；
-##       配置 ZombieSync（服务器权威 transform 同步，客户端纯显示）；
-##       死亡 → zombie_died 广播 + 死亡表现，清理回调回对象池（M2-S3a：despawn_to_pool 替代 queue_free）
-## 输入：Health.died 信号 → 进 Dead；players 组取最近玩家；zombie_pool 组取对象池（死亡回池）
-## 输出：驱动父节点 CharacterBody3D 位移/朝向；攻击对目标 PlayerState.take_damage
-## 谁调用：仅服务器执行（is_server() 才跑；客户端只显示）；挂在 zombie_common.tscn 的 AI 子节点
-## 规范：tech-plan §5.4 简化导航（不跑 NavigationAgent3D）；单文件 ≤300 行；
-##       reset_for_pool 由 ZombiePool 回池时调用（M2 风险备注 2：复位不彻底=死尸复活）
+## zombie_ai_common.gd — 普通丧尸状态机（Idle/Chase/Attack/Dead，tech-plan §5.4）
+## 简化导航 + 分帧 AI 预算（director.json ai_budget 可配）+ 服务器权威死亡回池；
+## 仅服务器执行；reset_for_pool 由 ZombiePool 回池调用（复位不彻底=死尸复活）
 
 class_name ZombieAI
 extends Node
@@ -22,7 +14,6 @@ const ATTACK_WINDUP := 0.5       # 秒，前摇（表现由 S6 接）
 const ATTACK_COOLDOWN := 1.0     # 秒，攻击冷却
 const RETARGET_INTERVAL := 1.5   # 秒，重算朝向/移动方向（简化导航）
 const MOVE_SPEED := 3.0          # 米/秒，追踪速度
-const MAX_AI_PER_FRAME := 40     # 分帧预算：每帧最多更新 N 只（tech-plan §5.4）
 const DEATH_FADE_TIME := 0.6     # 秒，死亡后 Visual 缩放淡出
 const DEATH_CLEANUP_DELAY := 1.5 # 秒，死亡后清理（M2-S3a：延迟到回池，防泄漏）
 const COLLISION_LAYER := 4       # 身体碰撞层（敌人层，M1-S5 碰撞层方案）
@@ -51,10 +42,11 @@ func _ready() -> void:
 	if _body == null:
 		return
 	var health := get_node_or_null("../Health") as Damageable
-	# 幂等（M3-S1 回归）：对象池复用节点出池时 request_ready() 会让 _ready 每次重跑，
-	# died 连接与同步器配置必须判重/判空，否则重复连接导致 _on_died 双跑、重复回池
+	# 幂等（M3-S1 回归）：request_ready 每次重跑，died 连接/同步器配置须判重（防重复回池）
 	if health != null and not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
+	ZombieAIBudget.ensure_loaded()  # 分帧预算参数（director.json ai_budget，M3-S4）
+	_apply_visibility_range()
 	_setup_sync()
 
 
@@ -106,8 +98,7 @@ func _tick_chase(delta: float) -> void:
 	_body.velocity.x = _move_dir.x * MOVE_SPEED
 	_body.velocity.z = _move_dir.z * MOVE_SPEED
 	if not _body.is_on_floor():
-		# 注意：get_gravity().y 为负（默认 -9.8），必须 **加** 它才会向下加速；
-		# 之前写成减号导致反重力（丧尸/玩家越飘越高，M1-ZOMBIE 根因，f5ac73c 引入）
+		# get_gravity().y 为负，必须 **加** 才向下加速（M1-ZOMBIE 反重力根因 f5ac73c）
 		_body.velocity.y = _body.velocity.y + _body.get_gravity().y * delta
 	_body.move_and_slide()
 
@@ -141,7 +132,7 @@ func _ai_budget_ok() -> bool:
 	if frame != _ai_last_frame:
 		_ai_last_frame = frame
 		_ai_updated_this_frame = 0
-	if _ai_updated_this_frame >= MAX_AI_PER_FRAME:
+	if _ai_updated_this_frame >= ZombieAIBudget.max_per_frame:
 		return false
 	_ai_updated_this_frame += 1
 	return true
@@ -225,9 +216,7 @@ func _start_death_cleanup() -> void:
 	_cleanup_tween.tween_callback(_free_zombie)
 
 
-## 死亡清理回调：服务器（有对象池）回池复用；客户端副本/无池兜底 queue_free。
-## 注意：不引用 ZombiePool 类型（防加载期循环：AI→池→场景→AI 的 Busy 解析错误），
-## 经 zombie_pool 组动态调用 despawn_to_pool
+## 死亡清理回调：服务器回池复用；客户端/无池兜底 queue_free（不引 ZombiePool 类型防加载环）
 func _free_zombie() -> void:
 	if not is_instance_valid(_body):
 		return
@@ -238,8 +227,7 @@ func _free_zombie() -> void:
 		_body.queue_free()
 
 
-## 回池复位（M2-S3a 风险备注 2）：防"死尸复活"——状态/碰撞/速度/物理/残留 tween 全部还原。
-## 由 ZombiePool._reset_zombie 调用；_body 为 null 说明从未出池（防御）
+## 回池复位（M2-S3a 风险备注 2）：状态/碰撞/速度/残留 tween 全还原，防"死尸复活"
 func reset_for_pool() -> void:
 	if _body == null:
 		return
@@ -268,6 +256,13 @@ func _kill_death_tweens() -> void:
 	if _cleanup_tween != null and _cleanup_tween.is_valid():
 		_cleanup_tween.kill()
 		_cleanup_tween = null
+
+
+## 远处剔除（M3-S4）：visibility_range 60m（tech-plan §5.2），仅真机渲染生效，幂等
+func _apply_visibility_range() -> void:
+	var visual := _body.get_node_or_null("Visual") as GeometryInstance3D
+	if visual != null:
+		visual.visibility_range_end = 60.0
 
 
 ## 音效钩子：事件 → SfxPool 播放（素材缺失静默跳过；S7 接线；pos 默认丧尸位置）

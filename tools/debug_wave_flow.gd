@@ -1,7 +1,8 @@
 extends SceneTree
-# 临时仿真脚本（M2-S1）：headless 跑主场景，程序化击杀验证 3 波全流程至通关。
+# 波次全流程仿真（M2-S1；M3-S4 waves 放大至 20/45/80，循环预算扩至 300s）：
+# headless 跑主场景，程序化击杀验证 3 波全流程至通关。
 # 用法：godot --headless --path . --script tools/debug_wave_flow.gd
-# 验证：E3 3 波递进（试探10/警戒18/潮涌30 burst）→ 通关；Intermission N 键提前跳波
+# 验证：E3 3 波递进（试探20/警戒45/潮涌80 burst）→ 通关；Intermission N 键提前跳波
 # 状态枚举：SETUP=0 WAVE_ACTIVE=1 WAVE_CLEARED=2 INTERMISSION=3 VICTORY=4
 
 const MAIN_SCENE := "res://scenes/main/main.tscn"
@@ -32,7 +33,7 @@ func _run() -> void:
 	var main := current_scene
 	var wm := main.get_node_or_null(WAVE_MANAGER_PATH)
 	var last_wave_active := -1
-	for i in 400:  # 每 0.5s 一轮，最多 200s
+	for i in 600:  # 每 0.5s 一轮，最多 300s（M3-S4：waves 20/45/80 需更久预算）
 		await create_timer(0.5).timeout
 		if i % 20 == 0:
 			_log_line("[FLOW] t=%ds state=%s wave=%s spawned=%s killed=%s" % [
