@@ -23,7 +23,25 @@
 | 2026-08-06 | `assets/models/weapons/wep_rifle_01.glb` | AssaultRifle_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 步枪（P2：同上；原 X 最长 0.8m 旋转至 Z） |
 | 2026-08-06 | `assets/models/weapons/wep_smg_01.glb` | SubmachineGun_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 冲锋枪（P2：同上；最 Z 长 0.6m 对齐 muzzle_offset z=-0.45） |
 | （取消） | `weapons/wep_*.glb` | FPS Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 武器 view/world ×4（P2：**官网 404，wayback 无存档**；按 art-director 文档 §1.2 W3/W4 授权替换为 Quaternius Ultimate Guns） |
-| （待入库） | `environment/env_block_*.glb` | Ultimate Modular Buildings / City Kit | Quaternius / Kenney | https://quaternius.com/packs/ultimatemodularbuildings.html / https://kenney.nl/assets/city-kit | CC0 | 环境模块（P3，未入库） |
+| （待入库） | `environment/env_block_*.glb` | Ultimate Modular Buildings / City Kit | Quaternius / Kenney | https://quaternius.com/packs/ultimatemodularbuildings.html / https://kenney.nl/assets/city-kit | CC0 | 环境模块（P3，**改用 ZAK Environment，已入库见下） |
+| 2026-08-06 | `assets/models/environment/env_container_01.glb` | Container_Green | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 集装箱·军绿（P3 装饰，FBX→GLB，scale 0.01，1336 tris） |
+| 2026-08-06 | `assets/models/environment/env_container_02.glb` | Container_Red | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 集装箱·锈红（P3 装饰，1032 tris） |
+| 2026-08-06 | `assets/models/environment/env_barrel_01.glb` | Barrel | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 油桶（P3 装饰，882 tris） |
+| 2026-08-06 | `assets/models/environment/env_pipes_01.glb` | Pipes | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 管道（P3 装饰，1496 tris） |
+| 2026-08-06 | `assets/models/environment/env_pallet_01.glb` | Pallet | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 托盘（P3 装饰，240 tris） |
+| 2026-08-06 | `assets/models/environment/env_pallet_02.glb` | Pallet_Broken | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 破托盘（P3 装饰，216 tris） |
+| 2026-08-06 | `assets/models/environment/env_cinder_01.glb` | CinderBlock | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 水泥砖（P3 装饰，368 tris） |
+| 2026-08-06 | `assets/models/environment/env_couch_01.glb` | Couch | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 沙发（P3 备用，未使用） |
+| 2026-08-06 | `assets/models/environment/env_hydrant_01.glb` | FireHydrant | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 消防栓（P3 装饰，976 tris） |
+| 2026-08-06 | `assets/models/environment/env_barrier_01.glb` | PlasticBarrier | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 塑料路障（P3 装饰，852 tris） |
+| 2026-08-06 | `assets/models/environment/env_sign_01.glb` | TownSign | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 城镇标牌（P3 备用，未使用） |
+| 2026-08-06 | `assets/models/environment/env_chest_01.glb` | Chest | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 铁箱（P3 装饰，3190 tris） |
+| 2026-08-06 | `assets/models/environment/env_street_straight_01.glb` | Street_Straight | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 街道块（P3 备用） |
+| 2026-08-06 | `assets/models/environment/env_street_crack_01.glb` | Street_Straight_Crack1 | Quaternius（Zombie Apocalypse Kit） | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 街道块·裂纹（P3 备用） |
+| 2026-08-06 | `assets/textures/environment/tex_concrete_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 混凝土地面贴皮（512×512，单纹理） |
+| 2026-08-06 | `assets/textures/environment/tex_metal_wall_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 金属墙板贴皮（512×512） |
+| 2026-08-06 | `assets/textures/environment/tex_rust_door_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 锈铁门板贴皮（512×512） |
+| 2026-08-06 | `assets/textures/environment/tex_rust_metal_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 锈金属通用（备用） |
 | （待入库） | `props/prop_*.glb` | FPS Kit / City Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 道具箱（颜色已修正：弹药黄/橙、血包医疗绿；模型 P4 替换未入库） |
 
 ## 处理说明（M3-ART-P0）
@@ -74,12 +92,22 @@
 - **第一人称手臂降级**：Kenney FPS Kit 通常含 view 模型带手臂，官网下架后无 view/world 区分来源。第一人称玩家看不到自己 Body（相机在 Head y=1.6，第三人称 Body 仅队友看），且 FPS Kit 已无 view 资源可下载，**只显示武器，不显示手臂**（按任务约束"第一视角手臂若素材无现成则降级"）。WeaponPivot 在玩家前方 y=1.55 z=-0.3，4 把武器通过 `_set_active_weapon` 切换 visible。
 - **任务约束遵守**：玩家 ≤3000 tris（2994 ✓），武器 ≤2000 tris（pistol 1040/shotgun 1270/rifle 1248/smg 1164 ✓），单纹理禁 PBR 多层（玩家与武器均无贴图，纯色 baseColorFactor ✓），Body 节点替换为模型实例，WeaponPivot 节点结构不动，Head/Camera/Collision/Sync 不动。
 
+## 处理说明（M3-ART-P3）
+
+- **任务**：《铁锈仓库》rustyard 环境美化（**保守替换**）——只换视觉，**几何/碰撞/Area3D 触发/补给点/刷怪点零改动**。
+- **来源包**：Quaternius **Zombie Apocalypse Kit**（`quaternius.com/packs/zombieapocalypsekit.html`，CC0）内的 `Environment` 文件夹（Google Drive 公开文件夹，gdown 拉取）。任务文档首选 UMB / Kenney City Kit：**UMB 官网改版为 SPA 无直链**、**Kenney City Kit 与 FPS Kit 一样已 404 下架**（均如实验证）→ 按文档 §5 降级预案与"取可下载者"授权，改用同作者（Quaternius）同 CC0 的 ZAK Environment，风格（工业废墟/集装箱/油桶/路障）完全匹配。
+- **贴皮（主策略）**：`rustyard.tscn` 的灰盒材质改为**程序化环境纹理**（`gen_env_textures.py` 自研 Pillow 生成，512×512 单纹理 albedo，禁 PBR 多层）：混凝土（#2A3140 系）/金属墙板（#3A3F4A 系）/锈铁门（#6B4A32 系）。材质只换 albedo_texture + uv1_scale 平铺，**所有 BoxMesh/BoxShape/StaticBody3D 节点原样**。
+- **装饰件（点缀，20 个）**：新增 `Deco` 节点（纯 MeshInstance 实例，**零 CollisionShape3D**），放货场/通道/广场/安全屋角落，避开玩家路径/触发体/补给/刷怪。12 个 FBX（Container×2/Barrel/Pipes/Pallet/Pallet_Broken/CinderBlock/FireHydrant/PlasticBarrier/Chest/Couch/Sign）经 `gen_env_glb.py`（pymeshlab FBX→OBJ + trimesh OBJ→GLB）转换：**ZAK FBX 以厘米建模 → scale 0.01 统一换算米**（20ft 集装箱 5.71m ✓）；底部对齐 Y=0；每个模型写入**纯色 baseColorFactor**（art 纪律：纯色+强调色）。tris 全部 <5000（最大 Chest 3190）。Couch/Sign/Street×2 已入库但**未使用**（备用，避免 >20 装饰件超预算）。
+- **验收**：结构自检 PASS（Walls 23=22 墙+门、Triggers 5、PlayerSpawns 2、HordeSpawns 16、SupplySpots 5、Pickups 6、Deco 20 无碰撞）；`--import` 0 ERROR；check_all_scripts/scenes OK；debug_level_progress 22/22 PASS；debug_wave_flow 3 波通关。
+- **工具脚本**：`_tmp_art_xjtf_dl/gen_env_textures.py`、`_tmp_art_xjtf_dl/gen_env_glb.py`（临时，不入库）。
+
 ## 待办
 
 - [x] 下载 Quaternius Ultimate Monsters → 评估：包内无 Zombie，跳过
 - [x] 下载 Quaternius Zombie Apocalypse Kit → 普通丧尸 R1 剥骨导入（P0 完成）
 - [x] **M3-ART-P1 特感替换**：Charger（Chubby 保留骨骼染橙）+ Spitter（Ribcage 保留骨骼染黄绿）+ 6 动画裁剪重命名 + 动画状态接线 + 记账
 - [x] **M3-ART-P2 玩家 Body + 武器视觉**：玩家 Body（BlueSoldier 剥骨静态 2994 tris，scale 0.578）+ 4 把武器（Quaternius Ultimate Guns FBX→OBJ→GLB 转换，枪口朝 -Z 校准） + 记账
+- [x] **M3-ART-P3 地图环境美化**：rustyard 贴皮（程序化混凝土/金属/锈蚀纹理）+ 20 个装饰件（ZAK Environment FBX→GLB 纯色）+ 记账；几何/碰撞/触发/补给/刷怪零改动
 - [ ] R2 普通丧尸壮型（Chubby 已被 P1 占用，需换替代或降级）
 - [ ] 道具 P4 道具模型替换（颜色已先改，模型沿用 BoxMesh 可降级）
 - [ ] 全部入库后按替换清单命名 + 逐条补全作者/链接/许可

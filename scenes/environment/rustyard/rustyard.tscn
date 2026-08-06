@@ -1,17 +1,37 @@
-[gd_scene load_steps=46 format=3]
+[gd_scene load_steps=65 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/area_trigger.gd" id="1_area"]
 [ext_resource type="Script" path="res://scripts/gameplay/door.gd" id="2_door"]
 [ext_resource type="PackedScene" path="res://scenes/environment/supply_point.tscn" id="3_supply"]
+[ext_resource type="Texture2D" path="res://assets/textures/environment/tex_concrete_01.png" id="4_tex_ground"]
+[ext_resource type="Texture2D" path="res://assets/textures/environment/tex_metal_wall_01.png" id="5_tex_wall"]
+[ext_resource type="Texture2D" path="res://assets/textures/environment/tex_rust_door_01.png" id="6_tex_door"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_container_01.glb" id="7_env_container1"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_container_02.glb" id="8_env_container2"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_barrel_01.glb" id="9_env_barrel"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_pipes_01.glb" id="10_env_pipes"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_pallet_01.glb" id="11_env_pallet"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_pallet_02.glb" id="12_env_pallet2"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_cinder_01.glb" id="13_env_cinder"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_couch_01.glb" id="14_env_couch"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_hydrant_01.glb" id="15_env_hydrant"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_barrier_01.glb" id="16_env_barrier"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_chest_01.glb" id="17_env_chest"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_ground"]
-albedo_color = Color(0.45, 0.5, 0.4, 1)
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("4_tex_ground")
+uv1_scale = Vector3(19, 9, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_wall"]
-albedo_color = Color(0.55, 0.5, 0.45, 1)
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("5_tex_wall")
+uv1_scale = Vector3(4, 1.5, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_door"]
-albedo_color = Color(0.6, 0.3, 0.2, 1)
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("6_tex_door")
+uv1_scale = Vector3(1, 1.5, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_region_safe"]
 albedo_color = Color(0.3, 0.5, 0.9, 0.35)
@@ -574,3 +594,89 @@ supply_type = 1
 editor_description = "后门安全屋补给点：弹药（蓝）"
 position = Vector3(44, 0, 2)
 supply_type = 0
+
+[node name="Deco" type="Node3D" parent="."]
+editor_description = "P3 环境装饰件：纯视觉（无碰撞/无触发），禁止影响玩家通行/区域触发/补给/刷怪"
+
+[node name="ChestSafe" parent="Deco" instance=ExtResource("17_env_chest")]
+editor_description = "安全屋·铁箱（装饰）"
+position = Vector3(-24.5, 0, -7)
+
+[node name="BarrelSafe" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "安全屋·油桶（装饰）"
+position = Vector3(-24.5, 0, 7)
+
+[node name="ContainerYardW" parent="Deco" instance=ExtResource("7_env_container1")]
+editor_description = "货场·集装箱（装饰，长轴沿 z）"
+position = Vector3(-14.2, 0, -5.5)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="ContainerYardE" parent="Deco" instance=ExtResource("8_env_container2")]
+editor_description = "货场·集装箱（装饰，长轴沿 z）"
+position = Vector3(4, 0, -5.5)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="ContainerYardS" parent="Deco" instance=ExtResource("7_env_container1")]
+editor_description = "货场·集装箱（装饰，长轴沿 x）"
+position = Vector3(0, 0, 11)
+
+[node name="BarrelYard1" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "货场·油桶（装饰，北墙边）"
+position = Vector3(-6, 0, -13)
+
+[node name="BarrelYard2" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "货场·油桶（装饰，北墙边）"
+position = Vector3(4, 0, -12)
+
+[node name="PalletYard1" parent="Deco" instance=ExtResource("11_env_pallet")]
+editor_description = "货场·托盘（装饰，南墙边）"
+position = Vector3(-6, 0, 12.5)
+
+[node name="PalletYard2" parent="Deco" instance=ExtResource("12_env_pallet2")]
+editor_description = "货场·破托盘（装饰）"
+position = Vector3(4, 0, 9)
+
+[node name="CinderYard" parent="Deco" instance=ExtResource("13_env_cinder")]
+editor_description = "货场·水泥砖堆（装饰，西墙边）"
+position = Vector3(-15.2, 0, 2)
+
+[node name="BarrelCorr1" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "货运通道·油桶（装饰，北墙边）"
+position = Vector3(10, 0, -2.8)
+
+[node name="BarrelCorr2" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "货运通道·油桶（装饰，北墙边）"
+position = Vector3(16, 0, -2.8)
+
+[node name="PipesCorr" parent="Deco" instance=ExtResource("10_env_pipes")]
+editor_description = "货运通道·管道（装饰，长轴沿 x，南墙边）"
+position = Vector3(13, 0, 2.8)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="BarrierCorr" parent="Deco" instance=ExtResource("16_env_barrier")]
+editor_description = "货运通道·路障（装饰，北墙边）"
+position = Vector3(18, 0, -2.8)
+
+[node name="ContainerPlazaNW" parent="Deco" instance=ExtResource("8_env_container2")]
+editor_description = "装卸广场·集装箱（装饰，长轴沿 x，北墙边）"
+position = Vector3(23.5, 0, -14.5)
+
+[node name="ContainerPlazaSE" parent="Deco" instance=ExtResource("7_env_container1")]
+editor_description = "装卸广场·集装箱（装饰，长轴沿 x，南墙边）"
+position = Vector3(37, 0, 14.5)
+
+[node name="BarrelPlazaE" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "装卸广场·油桶（装饰，东墙边）"
+position = Vector3(39, 0, -8)
+
+[node name="HydrantPlaza" parent="Deco" instance=ExtResource("15_env_hydrant")]
+editor_description = "装卸广场·消防栓（装饰）"
+position = Vector3(30, 0, 10)
+
+[node name="ChestBack" parent="Deco" instance=ExtResource("17_env_chest")]
+editor_description = "后门安全屋·铁箱（装饰）"
+position = Vector3(47, 0, -3.5)
+
+[node name="BarrelBack" parent="Deco" instance=ExtResource("9_env_barrel")]
+editor_description = "后门安全屋·油桶（装饰）"
+position = Vector3(47, 0, 3.5)
