@@ -42,6 +42,12 @@ func _ready() -> void:
 	_zombie_spawner.add_spawnable_scene(CHARGER_SCENE_PATH)  # M3-S2 特感走同一 Spawner 复制
 	_zombie_spawner.add_spawnable_scene(SPITTER_SCENE_PATH)  # M3-S3 喷吐者走同一 Spawner 复制
 	_pickup_spawner.add_spawnable_scene(SUPPLY_SCENE_PATH)
+	# M3-S6：丧尸死亡掉落物（弹药/医疗包）走 PickupSpawner 复制（服务器生成，各端同步）
+	_pickup_spawner.add_spawnable_scene("res://scenes/environment/pickup_ammo.tscn")
+	_pickup_spawner.add_spawnable_scene("res://scenes/environment/pickup_health.tscn")
+
+	# M3-S6：进入主场景 = 新会话，统计清零（GameState autoload 跨场景常驻，重开对局必须重置）
+	GameState.reset_session()
 
 	if not NetworkManager.is_network_active():
 		# 单机直跑（F5 不开网络）：生成本地玩家；波次刷怪由 WaveManager 驱动

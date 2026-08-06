@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "note": "掉落表（M3-S6 落盘，2026-08-06，待平衡）。字段：loot_table.<zombie_type> 为各类型丧尸的掉落概率表（key=物品 id，value=独立概率；多项为累积轮盘掷骰：roll∈[0,1)，落入累加区间即掉落，总和<1 则剩余为不掉落）。common(普通丧尸)=弹药 15% + 小医疗包 5%（合计 20% 掉落，GDD §5.2 丧尸掉落少量弹药）；charger/spitter(特感)=高概率必掉一个（ammo 60% + medkit 40% = 100%）。items.<id> 为物品参数：ammo.amount=拾取向当前武器弹匣补充的弹药数（<=0 表示补满）；medkit.heal=回血量（PlayerState.setter 钳制到 max_hp）。pickup_lifetime_s=掉落物无人拾取时的存活时间（秒，服务器权威到期消失，防地面堆积）。投掷物不在本表：M3 任务卡 §2-S6 标注可选，时间紧已降级跳过（见 S6 Handoff）。",
+  "loot_table": {
+    "common": {
+      "ammo": 0.15,
+      "medkit": 0.05
+    },
+    "charger": {
+      "ammo": 0.6,
+      "medkit": 0.4
+    },
+    "spitter": {
+      "ammo": 0.6,
+      "medkit": 0.4
+    }
+  },
+  "items": {
+    "ammo": {
+      "type": "ammo",
+      "amount": 30
+    },
+    "medkit": {
+      "type": "medkit",
+      "heal": 50
+    }
+  },
+  "pickup_lifetime_s": 30.0
+}

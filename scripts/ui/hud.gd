@@ -80,12 +80,17 @@ func _process(delta: float) -> void:
 	_revive_bar.visible = state.state == PlayerState.State.DOWN and state.revive_active
 	if _revive_bar.visible:
 		_revive_bar.value = state.revive_progress * _revive_bar.max_value
-	# S4 拾取提示：附近有补给点显示"按 E 拾取"（只读检测，不持有补给点状态）
+	# S4 拾取提示：附近有补给点显示"按 E 拾取"（只读检测，不持有补给点状态）；
+	# S6 无补给点时检测掉落物（pickup_items 组，蓝=弹药 红=医疗包）
 	var supply := _find_nearby_supply(player)
-	_pickup_hint.visible = supply != null
+	var pickup := null if supply != null else _find_nearby_pickup(player)
+	_pickup_hint.visible = supply != null or pickup != null
 	if supply != null:
 		var type_name := "弹药" if supply.supply_type == SupplyPoint.Type.AMMO else "医疗"
 		_pickup_hint.text = "按 E 拾取 %s" % type_name
+	elif pickup != null:
+		var ptype := int(pickup.get("pickup_type"))
+		_pickup_hint.text = "按 E 拾取 %s" % ("弹药" if ptype == 0 else "医疗包")
 	# M3-S2 冲撞者前摇警示（可选表现，简单为主）：15m 内冲撞者处于蓄力（WINDUP=2）→ 提示
 	_tick_special_warn(player)
 
@@ -130,6 +135,18 @@ func _find_nearby_supply(player: Node3D) -> SupplyPoint:
 		if dist <= best_dist:
 			best_dist = dist
 			best = s as SupplyPoint
+	return best
+
+
+## S6：找本地玩家拾取范围内最近的掉落物（同补给点判定半径；动态访问类型，客户端只读检测）
+func _find_nearby_pickup(player: Node3D) -> Node:
+	var best: Node = null
+	var best_dist := 2.5  # 与 PickupItem.PICKUP_RANGE 一致
+	for p in get_tree().get_nodes_in_group("pickup_items"):
+		var dist := player.global_position.distance_to((p as Node3D).global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = p
 	return best
 
 

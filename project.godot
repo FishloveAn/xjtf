@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 NetworkManager="*res://autoload/network_manager.gd"
 SfxPool="*res://scripts/audio/sfx_pool.gd"
+GameState="*res://autoload/game_state.gd"
 
 [display]
 

@@ -157,15 +157,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 
-## 交互键 E 按下：S4 补给点优先（交互区更近、瞬时结算）→ 再走救援（多人/单机自救援）
+## 交互键 E 按下：S4 补给点优先（交互区更近、瞬时结算）→ S6 掉落物拾取 → 再走救援
 func _on_interact_pressed() -> void:
-	# 补给点优先级高于救援：拾取是瞬时动作，且补给点常在脚边，先结算不打断救援流
+	# 补给点优先级高于掉落物/救援：拾取是瞬时动作，且补给点常在脚边，先结算不打断救援流
 	var supply := _find_nearby_supply()
 	if supply != null:
 		if NetworkManager.is_server():
 			supply.request_pickup()  # 单机/主机：服务器进程直接结算（无 peer 时 rpc 行为不可靠）
 		else:
 			supply.request_pickup.rpc_id(NetworkManager.SERVER_ID)
+		return
+	# S6 掉落物拾取：复用 E 键（与 S4 补给点一致交互）；客户端选目标，服务器复验距离/已用
+	var pickup := _find_nearby_pickup()
+	if pickup != null:
+		if NetworkManager.is_server():
+			pickup.request_pickup()
+		else:
+			pickup.request_pickup.rpc_id(NetworkManager.SERVER_ID)
 		return
 	var ps := get_node_or_null("Health") as PlayerState
 	if ps == null:
@@ -217,6 +225,18 @@ func _find_nearby_supply() -> SupplyPoint:
 		if dist <= best_dist:
 			best_dist = dist
 			best = s as SupplyPoint
+	return best
+
+
+## 找拾取范围内最近的掉落物（S6；与补给点同判定半径/交互，客户端选目标，服务器复验）
+func _find_nearby_pickup() -> PickupItem:
+	var best: PickupItem = null
+	var best_dist := PickupItem.PICKUP_RANGE
+	for p in get_tree().get_nodes_in_group("pickup_items"):
+		var dist := global_position.distance_to(p.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = p as PickupItem
 	return best
 
 

@@ -1,0 +1,35 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/pickup_item.gd" id="1_pickup"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ammo"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_health"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ammo"]
+albedo_color = Color(0.2, 0.6, 1, 1)
+emission_enabled = true
+emission = Color(0.2, 0.6, 1, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_health"]
+albedo_color = Color(1, 0.25, 0.25, 1)
+emission_enabled = true
+emission = Color(1, 0.25, 0.25, 1)
+emission_energy_multiplier = 1.5
+
+[node name="PickupItem" type="Node3D"]
+script = ExtResource("1_pickup")
+
+[node name="MeshAmmo" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.35, 0)
+mesh = SubResource("BoxMesh_ammo")
+surface_material_override/0 = SubResource("Mat_ammo")
+
+[node name="MeshHealth" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.35, 0)
+mesh = SubResource("BoxMesh_health")
+surface_material_override/0 = SubResource("Mat_health")
+visible = false

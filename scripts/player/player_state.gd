@@ -92,6 +92,7 @@ func take_damage(dmg: float, attacker: Node = null) -> void:
 			if hp <= 0.0:
 				hp = 0.0
 				state = State.DOWN  # 倒地不是死亡：不 emit died
+				GameState.register_down()  # S6 幸存统计：倒地次数累加（服务器权威）
 
 
 ## 服务器：冲撞者命中 → 强制倒地（压制，M3-S2）。ALIVE→DOWN（hp=0，可被队友救援）；
@@ -112,6 +113,7 @@ func apply_pin(attacker: Node = null) -> void:
 			damaged.emit(1.0, attacker, hp)
 			state = State.DOWN
 			_broadcast_player_hurt()
+			GameState.register_down()  # S6 幸存统计：被冲撞压制强制倒地计入倒地次数
 
 
 ## 服务器：医疗补给恢复（S4 补给点）。ALIVE 回血（setter 钳制到 max_hp）；
@@ -227,6 +229,7 @@ func _tick_revive(delta: float) -> void:
 		state = State.ALIVE
 		hp = REVIVE_HP
 		revive_done.rpc(owner_peer_id())
+		GameState.register_revive()  # S6 幸存统计：救援完成数（服务器权威）
 
 
 func _clear_active_revive() -> void:

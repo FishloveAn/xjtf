@@ -179,7 +179,9 @@ func _complete_segment() -> void:
 	_set_phase(Phase.BACKDOOR)
 	_heal_and_resupply_all()
 	var elapsed := Time.get_ticks_msec() / 1000.0 - _segment_start_time
-	CheckpointManager.save_progress(1, elapsed, 0)
+	# S6：结算统计（击杀/救援/倒地/段落用时）→ 广播计分板全端展示；击杀数写入存档 best_score
+	GameState.finish_segment(elapsed)
+	CheckpointManager.save_progress(1, elapsed, GameState.kills_common + GameState.kills_special)
 	event_level_complete.emit(1)
 	print("[LevelAdvance] 到达后门安全屋：回血/补给 + 已存档（段落用时 %.1fs）" % elapsed)
 	_toast("段落完成！已存档，按 Enter 重开 / Esc 回主菜单")

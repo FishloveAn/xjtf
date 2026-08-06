@@ -266,6 +266,8 @@ func _enter_intermission() -> void:
 
 func _enter_victory() -> void:
 	state = State.VICTORY
+	# S6：竞技场通关结算（自动取会话用时）→ 广播计分板全端展示
+	GameState.finish_segment()
 	_broadcast_victory()
 
 

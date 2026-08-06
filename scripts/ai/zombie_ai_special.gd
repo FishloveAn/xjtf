@@ -75,6 +75,7 @@ func _load_params() -> void:
 	if health != null:
 		health.max_hp = hp
 		health.hp = hp
+		health.zombie_type = _params_id()  # M3-S6：掉落表/击杀统计按特感类型分列
 	_die_clear_s = float(_params.get("die_clear_s", _die_clear_s))
 
 
@@ -107,7 +108,15 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 func _on_died(_attacker: Node) -> void:
 	_kill_visual_tweens()
 	_broadcast_zombie_died()
+	_notify_loot_manager()  # M3-S6：特感死亡掉落（高概率）+ 击杀统计
 	set_physics_process(false)
+
+
+## 通知掉落系统（服务器）：经组动态 call（不引 LootManager 类型，防 M2-S3 加载环）
+func _notify_loot_manager() -> void:
+	var lm := get_tree().get_first_node_in_group("loot_manager")
+	if lm != null:
+		lm.call("on_zombie_died", _body)
 
 
 ## [authority] 服务器→所有人：特感死亡。所有端禁用碰撞、播血雾爆发 + 淡出、定时清理

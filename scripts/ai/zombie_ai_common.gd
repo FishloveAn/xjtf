@@ -172,11 +172,20 @@ func _recompute_direction() -> void:
 	_body.rotation.y = atan2(-dir.x, -dir.z)  # 让 -z 朝向目标
 
 
-## 死亡（服务器 Health.died）：进 Dead 并广播 zombie_died（所有端播死亡表现 + 清理）
+## 死亡（服务器 Health.died）：进 Dead 并广播 zombie_died（所有端播死亡表现 + 清理）；
+## 掉落/击杀统计由 LootManager 处理（服务器，S6）
 func _on_died(_attacker: Node) -> void:
 	state = State.DEAD
 	_broadcast_zombie_died()
+	_notify_loot_manager()
 	set_physics_process(false)
+
+
+## 通知掉落系统（服务器）：经组动态 call（不引 LootManager 类型，防 M2-S3 加载环）
+func _notify_loot_manager() -> void:
+	var lm := get_tree().get_first_node_in_group("loot_manager")
+	if lm != null:
+		lm.call("on_zombie_died", _body)
 
 
 ## [authority] 服务器→所有人：丧尸死亡。所有端禁用碰撞、播血雾爆发 + 淡出、定时清理

@@ -10,6 +10,10 @@ extends Damageable
 
 @export var max_hp := 100.0
 
+## 丧尸类型（"common"普通 / "charger"冲撞者 / "spitter"喷吐者，M3-S6 掉落表按类型掷骰、
+## 击杀统计分列）。普通丧尸保持默认；特感由 ZombieSpecialAI._load_params 按条目 id 注入
+var zombie_type := "common"
+
 ## 当前血量（服务器权威）
 var hp := 100.0
 
