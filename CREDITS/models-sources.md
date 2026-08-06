@@ -17,8 +17,12 @@
 | （待入库） | `characters/char_zombie_common_02.glb` | Zombie_Chubby | Quaternius | https://quaternius.com/packs/zombieapocalypsekit.html | CC0 | 普通丧尸壮型（**P1 冲撞者已占用 Chubby**，R2 需换替代或降级） |
 | （待入库） | `characters/char_zombie_charger.glb` | （P1 已入库，特感同名） | Quaternius | https://quaternius.com/packs/ultimatemonsters.html | CC0 | 冲撞者（P1，已入库到 `char_zombie_charger_01.glb`） |
 | （待入库） | `characters/char_zombie_spitter.glb` | （P1 已入库，特感同名） | Quaternius | https://quaternius.com/packs/ultimatemonsters.html | CC0 | 喷吐者（P1，已入库到 `char_zombie_spitter_01.glb`） |
-| （待入库） | `characters/char_survivor_male_a.glb` | Ultimate Animated Character | Quaternius | https://quaternius.com/packs/ultimateanimatedcharacter.html | CC0 | 玩家 Body（P2，未入库） |
-| （待入库） | `weapons/wep_*.glb` | FPS Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 武器 view/world ×4（P2，未入库） |
+| 2026-08-06 | `assets/models/characters/char_player_01.glb` | BlueSoldier_Male（剥骨静态） | Quaternius | https://quaternius.com/packs/ultimateanimatedcharacter.html | CC0 | 玩家 Body（P2：剥骨+保留全部 6 个 primitive 材质，scale 0.578 校准到 ~1.8m，6 个纯色材质超 ≤2 铁律但单实例无合批压力） |
+| 2026-08-06 | `assets/models/weapons/wep_pistol_01.glb` | Pistol_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 手枪（P2：FBX→OBJ→GLB 转换；Y 180° 旋转使枪口朝 -Z；position 对齐 muzzle_offset(0,-0.02,-0.4)） |
+| 2026-08-06 | `assets/models/weapons/wep_shotgun_01.glb` | Shotgun_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 霰弹枪（P2：同上；最 Z 长 0.9m 对齐 muzzle_offset z=-0.45） |
+| 2026-08-06 | `assets/models/weapons/wep_rifle_01.glb` | AssaultRifle_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 步枪（P2：同上；原 X 最长 0.8m 旋转至 Z） |
+| 2026-08-06 | `assets/models/weapons/wep_smg_01.glb` | SubmachineGun_1 | Quaternius | https://quaternius.com/packs/ultimateguns.html | CC0 | 冲锋枪（P2：同上；最 Z 长 0.6m 对齐 muzzle_offset z=-0.45） |
+| （取消） | `weapons/wep_*.glb` | FPS Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 武器 view/world ×4（P2：**官网 404，wayback 无存档**；按 art-director 文档 §1.2 W3/W4 授权替换为 Quaternius Ultimate Guns） |
 | （待入库） | `environment/env_block_*.glb` | Ultimate Modular Buildings / City Kit | Quaternius / Kenney | https://quaternius.com/packs/ultimatemodularbuildings.html / https://kenney.nl/assets/city-kit | CC0 | 环境模块（P3，未入库） |
 | （待入库） | `props/prop_*.glb` | FPS Kit / City Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 道具箱（颜色已修正：弹药黄/橙、血包医疗绿；模型 P4 替换未入库） |
 
@@ -63,12 +67,19 @@
 
 修改文件：`scenes/environment/supply_point.tscn`、`scenes/environment/pickup_item.tscn`（仅 sub_resource 材质颜色，节点结构不动）。
 
+## 处理说明（M3-ART-P2）
+
+- **玩家 Body**：用 Quaternius Ultimate Animated Character（CC0）的 `BlueSoldier_Male`（带 6 个纯色 primitive：Skin/Main/Black/Grey/Face/Helmet），剥骨静态（与 P0 普通丧尸方案 B 一致，art-director §2.4 明确 Body 静态即可，节省骨骼成本）。P0/P1 的 `strip_bones.py` 只处理 primitives[0]，导致仅保留 Skin 部分（1020 tris）而丢身体/头盔——升级为 `process_player_strip.py`（_tmp_art_xjtf_dl）处理全部 6 个 primitive，烘焙 bind pose 后保留各自材质。导出 `char_player_01.glb`：2994 tris，6 个 StandardMaterial3D 纯色（baseColorFactor），单 mesh 节点。`player.tscn/Body` 从蓝胶囊（MeshInstance3D + CapsuleMesh）改为 instance=glb，scale=0.578（模型高 3.115→1.8m），position y=0.9（与碰撞胶囊中心对齐）。6 材质超 art-director 铁律"≤2 材质"（主要约束丧尸 100 只的合批），但玩家 Body 仅单实例、无合批压力、无贴图（images=0）符合"单纹理禁 PBR 多层"精神。玩家 Body 改用实例化后不再是 MeshInstance3D，zombie_ai_common.gd 的 `_apply_visibility_range` 对 Node3D 实例的 cast 已知次优（不影响功能）。
+- **武器**：Kenney FPS Kit（`kenney.nl/assets/fps-kit`）**官网已下架 404**，wayback 多个 API 端点（CDX、available、calendarcaptures、id_ 抓取）**均无该 URL 存档**（calendarcaptures 2022 年矩阵全 null/{}，CDX kenney.nl/assets/fps-kit 返回空 []）。art-director 文档 §1.2 W3/W4 明确授权替代方案："Kenney FPS Kit（不足用 Quaternius Weapon 包或 Poly Pizza 补，只取 CC0）"——故采用 Quaternius Ultimate Guns（CC0）。该包仅含 .blend/.fbx/.obj 格式（无 glTF），使用 `pymeshlab` 加载 FBX→OBJ → `trimesh` 加载 OBJ→GLB 转换。脚本：_tmp_art_xjtf_dl/fbx_to_glb.py（Pistol 0.25m/Shotgun 0.9m/AssaultRifle 0.8m/SubmachineGun 0.6m 长度校准，最长轴对齐 Z 方向，Z+端截面小判定为枪口→Y 180° 旋转使枪口朝 -Z）。Google Drive 多次限流（"many accesses"）下，部分 FBX 反复重试下载成功。模型无原始贴图/顶点色，导入后由场景的 Visual 节点统一应用纯色 StandardMaterial3D（art 纪律）。
+- **第一人称手臂降级**：Kenney FPS Kit 通常含 view 模型带手臂，官网下架后无 view/world 区分来源。第一人称玩家看不到自己 Body（相机在 Head y=1.6，第三人称 Body 仅队友看），且 FPS Kit 已无 view 资源可下载，**只显示武器，不显示手臂**（按任务约束"第一视角手臂若素材无现成则降级"）。WeaponPivot 在玩家前方 y=1.55 z=-0.3，4 把武器通过 `_set_active_weapon` 切换 visible。
+- **任务约束遵守**：玩家 ≤3000 tris（2994 ✓），武器 ≤2000 tris（pistol 1040/shotgun 1270/rifle 1248/smg 1164 ✓），单纹理禁 PBR 多层（玩家与武器均无贴图，纯色 baseColorFactor ✓），Body 节点替换为模型实例，WeaponPivot 节点结构不动，Head/Camera/Collision/Sync 不动。
+
 ## 待办
 
 - [x] 下载 Quaternius Ultimate Monsters → 评估：包内无 Zombie，跳过
 - [x] 下载 Quaternius Zombie Apocalypse Kit → 普通丧尸 R1 剥骨导入（P0 完成）
 - [x] **M3-ART-P1 特感替换**：Charger（Chubby 保留骨骼染橙）+ Spitter（Ribcage 保留骨骼染黄绿）+ 6 动画裁剪重命名 + 动画状态接线 + 记账
+- [x] **M3-ART-P2 玩家 Body + 武器视觉**：玩家 Body（BlueSoldier 剥骨静态 2994 tris，scale 0.578）+ 4 把武器（Quaternius Ultimate Guns FBX→OBJ→GLB 转换，枪口朝 -Z 校准） + 记账
 - [ ] R2 普通丧尸壮型（Chubby 已被 P1 占用，需换替代或降级）
 - [ ] 道具 P4 道具模型替换（颜色已先改，模型沿用 BoxMesh 可降级）
-- [ ] Kenney FPS Kit 下载 → 武器/道具（P2）
 - [ ] 全部入库后按替换清单命名 + 逐条补全作者/链接/许可
