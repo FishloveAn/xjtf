@@ -21,6 +21,15 @@ func _ready() -> void:
 	NetworkManager.connection_failed.connect(_on_connection_failed)
 	_host_button.pressed.connect(_on_host_pressed)
 	_join_button.pressed.connect(_on_join_pressed)
+	_show_save_status()
+
+
+## S5 检查点：主菜单显示"可续玩"存档状态（save/progress.json，主机本机）
+func _show_save_status() -> void:
+	if CheckpointManager.has_progress():
+		var p := CheckpointManager.load_progress()
+		_status_label.text = "有存档：第 %d 段已完成（用时 %.0f 秒），重开可续" % [
+			int(p.get("segment", 0)), float(p.get("finish_time_s", 0.0))]
 
 
 func _on_host_pressed() -> void:

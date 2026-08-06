@@ -1,9 +1,11 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_manager.gd" id="3_wave"]
 [ext_resource type="PackedScene" path="res://scenes/environment/supply_point.tscn" id="4_supply"]
+[ext_resource type="PackedScene" path="res://scenes/environment/rustyard/rustyard.tscn" id="5_rustyard"]
+[ext_resource type="Script" path="res://scripts/gameplay/level_advance.gd" id="6_level"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_top_color = Color(0.25, 0.45, 0.75, 1)
@@ -15,15 +17,6 @@ sky_material = SubResource("ProceduralSkyMaterial_1")
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 2
 sky = SubResource("Sky_1")
-
-[sub_resource type="BoxMesh" id="BoxMesh_ground"]
-size = Vector3(40, 0.2, 40)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.45, 0.5, 0.4, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(40, 0.2, 40)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -39,40 +32,7 @@ shadow_enabled = true
 
 [node name="Level" type="Node3D" parent="World"]
 
-[node name="Ground" type="StaticBody3D" parent="World/Level"]
-position = Vector3(0, -0.1, 0)
-
-[node name="Mesh" type="MeshInstance3D" parent="World/Level/Ground"]
-mesh = SubResource("BoxMesh_ground")
-surface_material_override/0 = SubResource("StandardMaterial3D_ground")
-
-[node name="Collision" type="CollisionShape3D" parent="World/Level/Ground"]
-shape = SubResource("BoxShape3D_ground")
-
-[node name="SpawnPoints" type="Node3D" parent="World/Level"]
-
-[node name="SpawnA" type="Marker3D" parent="World/Level/SpawnPoints" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -10)
-
-[node name="SpawnB" type="Marker3D" parent="World/Level/SpawnPoints" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -10)
-
-[node name="SpawnC" type="Marker3D" parent="World/Level/SpawnPoints" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 10)
-
-[node name="SpawnD" type="Marker3D" parent="World/Level/SpawnPoints" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 10)
-
-[node name="SupplySpots" type="Node3D" parent="World/Level"]
-
-[node name="SupplySpotA" type="Marker3D" parent="World/Level/SupplySpots" groups=["supply_spot"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5)
-
-[node name="SupplySpotB" type="Marker3D" parent="World/Level/SupplySpots" groups=["supply_spot"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
-
-[node name="SupplySpotC" type="Marker3D" parent="World/Level/SupplySpots" groups=["supply_spot"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 5)
+[node name="Rustyard" parent="World/Level" instance=ExtResource("5_rustyard")]
 
 [node name="Pickups" type="Node3D" parent="World"]
 
@@ -101,5 +61,8 @@ spawn_path = NodePath("../World/Pickups")
 
 [node name="WaveManager" type="Node" parent="Gameplay"]
 script = ExtResource("3_wave")
+
+[node name="LevelAdvance" type="Node3D" parent="Gameplay"]
+script = ExtResource("6_level")
 
 [node name="HUD" parent="." instance=ExtResource("2_hud")]

@@ -32,6 +32,12 @@ func _run() -> void:
 	await create_timer(2.0).timeout
 	var main := current_scene
 	var wm := main.get_node_or_null(WAVE_MANAGER_PATH)
+	# S5：主场景已接入推进制（LevelAdvance 置 level_mode=true，波次等区域触发）；
+	# 本测试回归竞技场自动推进（3 波递进→通关），关掉 level_mode 并手动开第 0 波
+	if wm != null and bool(wm.get("level_mode")):
+		wm.set("level_mode", false)
+		wm._begin_wave(0)
+		_log_line("[FLOW] 已切回竞技场模式（level_mode=false），开始第 0 波")
 	var last_wave_active := -1
 	for i in 600:  # 每 0.5s 一轮，最多 300s（M3-S4：waves 20/45/80 需更久预算）
 		await create_timer(0.5).timeout

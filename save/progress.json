@@ -1,0 +1,9 @@
+{
+	"version": 1,
+	"segment": 0,
+	"completed": false,
+	"finish_time_s": 0.0,
+	"best_score": 0,
+	"saved_at": "",
+	"note": "默认存档（未完成段落，仓库种子）。运行时由 CheckpointManager 写入 user://save/progress.json（主机本机存档，tech-plan §4.5；导出版 user:// 可写，M3-S8）。字段：segment=已完成的段落号（S5 为 1）、finish_time_s=完成用时、best_score 预留 S6 结算。"
+}

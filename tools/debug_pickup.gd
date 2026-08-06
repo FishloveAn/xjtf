@@ -67,6 +67,7 @@ func _run() -> void:
 	# E：Intermission 波间刷新（reward 数据驱动）——经 WaveManager._enter_intermission 触发
 	# wave_01 reward={health_packs:0, ammo:1} → 应生成 1 个弹药补给点
 	var wm := main.get_node_or_null("Gameplay/WaveManager")
+	wm._begin_wave(0)  # S5：推进制下 _current_wave 为空，先切竞技场第 0 波让 reward 生效
 	wm._enter_intermission()
 	await create_timer(0.1).timeout
 	var spawned_count := 0

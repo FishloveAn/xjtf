@@ -60,6 +60,8 @@ func _run() -> void:
 
 	# --- ① 直线冲撞 → 命中玩家 DOWN ---
 	_log_line("--- ① 直线冲撞 → 命中玩家 DOWN ---")
+	# S5 主场景已换推进制关卡（带墙）；移到装卸广场中央（开阔无遮挡），保证 15m 直线可达
+	player.global_position = Vector3(30.0, 0.0, 0.0)
 	var start_pos: Vector3 = player.global_position
 	var charger := _spawn_charger(zombies, start_pos + Vector3(0.0, 0.0, 15.0))
 	_check(charger != null, "冲撞者生成于玩家正前方 15m 直线上")
@@ -107,8 +109,8 @@ func _run() -> void:
 	_log_line("--- ③ 冲撞落空（玩家侧移）→ 硬直 → 冷却回 Chase ---")
 	var ps := player.get_node_or_null("Health")
 	ps.apply_healing(100.0)  # 复活：DOWN→ALIVE（服务器权威单机）
-	player.global_position = Vector3(5.0, 0.0, 5.0)
-	var charger_b := _spawn_charger(zombies, Vector3(5.0, 0.0, 20.0))
+	player.global_position = Vector3(30.0, 0.0, 0.0)  # 仍用装卸广场（开阔，冲撞落空语义成立）
+	var charger_b := _spawn_charger(zombies, Vector3(30.0, 0.0, 15.0))
 	_check(charger_b != null, "冲撞者 B 生成于新玩家正前方 15m 直线上")
 	if charger_b == null:
 		_finish()

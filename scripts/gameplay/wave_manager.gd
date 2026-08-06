@@ -1,20 +1,24 @@
-## wave_manager.gd — 波次状态机（M2-S1 + S2 Director 压力 + S3a 对象池刷怪）
+## wave_manager.gd — 波次状态机（M2-S1 + S2 Director 压力 + S3a 对象池刷怪 + S5 关卡触发）
 ## 职责：装载 waves.json；服务器权威推进 Setup→WaveActive→WaveCleared→Intermission→(下一波)Setup→通关；
 ##       刷怪走 ZombiePool 对象池（128 只隐藏复用，防运行时反复 instantiate/free 卡顿）；wave_* 事件 authority 广播
 ##       普通丧尸 composition 走池；特感（charger/spitter）独立实例化，Director 时机 + 共享同屏 cap ≤5（M3-S2/S3）
+##       M3-S5 推进制：level_mode=true 时自动开波停用，等待 LevelAdvance 按区域触发
+##       （start_wave_config 手动启动一个波次配置，清波后转 LEVEL_WAIT 而非 Intermission）
 ## 输入：waves.json；S2：trickle 刷怪计时由子节点 Director（director.gd）按压力缩放；输出：向 Zombies 出池（M1 手动 add_child）
-## 谁调用：main.tscn 的 Gameplay/WaveManager；HUD 订阅 event_* 信号只读展示
-## 规范：tech-plan §7.2/§5.5；4.7 铁律（get_gravity().y、禁 Vector 字段复合赋值）；单文件 ≤300 行；调试键 N=跳波/Enter=重开
+## 谁调用：main.tscn 的 Gameplay/WaveManager；HUD 订阅 event_* 信号只读展示；
+##       LevelAdvance（推进制）调用 start_wave_config / get_level_wave_config 并订阅 event_level_wave_cleared
+## 规范：tech-plan §7.2/§5.5；4.7 铁律（get_gravity().y、禁 Vector 字段复合赋值）；调试键 N=跳波/Enter=重开（仅竞技场模式）
 
 class_name WaveManager
 extends Node
 
-enum State { SETUP, WAVE_ACTIVE, WAVE_CLEARED, INTERMISSION, VICTORY }
+enum State { SETUP, WAVE_ACTIVE, WAVE_CLEARED, INTERMISSION, VICTORY, LEVEL_WAIT }
 
 const WAVES_JSON_PATH := "res://data/waves.json"
 const SETUP_COUNTDOWN := 10.0        # 秒，Setup 预告倒计时（E1，待平衡）
 const INTERMISSION_COUNTDOWN := 30.0 # 秒，波间休整（E2，待平衡）
 const CLEARED_PAUSE := 1.5           # 秒，WaveCleared 播报停留时长（E2 可读）
+const LEVEL_SETUP_COUNTDOWN := 5.0   # 秒，关卡波次预告倒计时（推进制，比竞技场短，S5）
 const BURST_BATCH := 8               # burst 每批刷怪数（短时间涌入，同屏 cap 仍生效）
 const BURST_BATCH_INTERVAL := 0.15   # 秒，burst 批次间隔
 const SPAWN_RADIUS := 3.0            # 米，刷怪点随机偏移半径
@@ -28,12 +32,22 @@ signal event_wave_begun(wave_index: int)
 signal event_wave_cleared(wave_index: int, wave_name: String)
 signal event_intermission_started(countdown: float)
 signal event_victory
+## 关卡波次清除（S5 推进制）：level_mode 下清波后转 LEVEL_WAIT，通知 LevelAdvance 可推进下一步
+signal event_level_wave_cleared(wave_id: String)
 
 var state: State = State.SETUP
 var current_wave_index := 0  # 0-based，读 waves.json（E3：无硬编码波数）
+## 推进制开关（S5）：true=自动开波停用，等 LevelAdvance 区域触发；false=竞技场自动推进（默认）
+var level_mode := false
+## 刷怪点组名（S5）：竞技场默认 "spawn_point"（玩家出生点同组）；推进制由 LevelAdvance 切
+## "horde_spawn_point"（关卡内散布的尸潮刷怪点，与玩家出生点分离）
+var spawn_point_group := "spawn_point"
 
 var _waves: Array = []
+## 关卡波次配置（waves.json level_waves 数组，S5：触发式波次，见 LevelAdvance）
+var _level_waves: Array = []
 var _current_wave: Dictionary = {}
+var _current_wave_id := ""
 var _spawned_count := 0
 var _killed_count := 0
 var _concurrent_count := 0
@@ -86,9 +100,14 @@ func _process(delta: float) -> void:
 		State.WAVE_CLEARED:
 			_cleared_timer -= delta
 			if _cleared_timer <= 0.0:
-				_enter_intermission()
+				if level_mode:
+					_enter_level_wait()  # 推进制：清波后回等待，由 LevelAdvance 决定下一步
+				else:
+					_enter_intermission()
 		State.INTERMISSION:
 			_tick_intermission(delta)
+		State.LEVEL_WAIT:
+			pass  # 推进制：等待 LevelAdvance 按区域触发（start_wave_config）
 
 
 func _start() -> void:
@@ -97,6 +116,11 @@ func _start() -> void:
 		return
 	if not _load_waves():
 		push_error("[WaveManager] waves.json 装载失败，波次系统停用")
+		return
+	if level_mode:
+		# 推进制（S5）：不自动开波，等待 LevelAdvance 区域触发波次
+		state = State.LEVEL_WAIT
+		print("[WaveManager] 关卡推进模式：等待区域触发波次")
 		return
 	_begin_wave(0)
 
@@ -112,6 +136,9 @@ func _load_waves() -> bool:
 	if not (waves is Array) or waves.is_empty():
 		return false
 	_waves = waves
+	# S5：关卡触发式波次独立数组（竞技场 waves 保持 3 波推进不受影响）
+	var level_waves = parsed.get("level_waves", [])
+	_level_waves = level_waves if level_waves is Array else []
 	return true
 
 
@@ -123,6 +150,44 @@ func _begin_wave(wave_index: int) -> void:
 		return
 	current_wave_index = wave_index
 	_current_wave = _waves[wave_index]
+	_current_wave_id = String(_current_wave.get("id", ""))
+	_reset_wave_state()
+	_setup_timer = SETUP_COUNTDOWN
+	state = State.SETUP
+	_broadcast_wave_started(wave_index, _current_wave.get("name", ""), SETUP_COUNTDOWN)
+
+
+## 关卡触发：手动启动一个波次配置（S5，level_mode 下由 LevelAdvance 调用）。
+## 前置：仅 LEVEL_WAIT 态可启动（防上一波未清时叠加刷怪）；返回是否成功
+func start_wave_config(cfg: Dictionary) -> bool:
+	if not NetworkManager.is_server():
+		return false
+	if state != State.LEVEL_WAIT:
+		return false
+	if cfg.is_empty():
+		return false
+	_current_wave = cfg
+	_current_wave_id = String(cfg.get("id", ""))
+	_reset_wave_state()
+	_setup_timer = LEVEL_SETUP_COUNTDOWN
+	state = State.SETUP
+	_broadcast_wave_started(-1, _current_wave.get("name", ""), LEVEL_SETUP_COUNTDOWN)
+	return true
+
+
+## 关卡波次配置查找（S5，LevelAdvance 调用）：优先 level_waves，回退竞技场 waves
+func get_level_wave_config(wave_id: String) -> Dictionary:
+	for w in _level_waves:
+		if String(w.get("id", "")) == wave_id:
+			return w
+	for w in _waves:
+		if String(w.get("id", "")) == wave_id:
+			return w
+	return {}
+
+
+## 波次计数器统一复位（_begin_wave 与 start_wave_config 共用）
+func _reset_wave_state() -> void:
 	_spawned_count = 0
 	_killed_count = 0
 	_concurrent_count = 0
@@ -132,9 +197,11 @@ func _begin_wave(wave_index: int) -> void:
 	_active_specials = 0
 	_special_pending_timer = 0.0
 	_spawn_timer = 0.0
-	_setup_timer = SETUP_COUNTDOWN
-	state = State.SETUP
-	_broadcast_wave_started(wave_index, _current_wave.get("name", ""), SETUP_COUNTDOWN)
+
+
+func _enter_level_wait() -> void:
+	state = State.LEVEL_WAIT
+	_broadcast_level_wave_cleared(_current_wave_id)
 
 
 func _tick_setup(delta: float) -> void:
@@ -345,7 +412,7 @@ func _concurrent_cap() -> int:
 
 
 func _random_spawn_position() -> Vector3:
-	var points := get_tree().get_nodes_in_group("spawn_point")
+	var points := get_tree().get_nodes_in_group(spawn_point_group)
 	if points.is_empty():
 		return Vector3.ZERO
 	var p := points[randi() % points.size()] as Node3D
@@ -355,6 +422,8 @@ func _random_spawn_position() -> Vector3:
 func _unhandled_input(event: InputEvent) -> void:
 	if not NetworkManager.is_server() or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
+	if level_mode:
+		return  # 推进制：调试跳波键不适用（波次由区域触发）
 	if event.keycode == KEY_N and (state == State.INTERMISSION or state == State.WAVE_CLEARED):
 		_begin_wave(current_wave_index + 1)
 	elif event.keycode == KEY_ENTER and state == State.VICTORY:
@@ -394,6 +463,19 @@ func _broadcast_victory() -> void:
 		victory.rpc()
 	else:
 		victory()
+
+
+## 关卡波次清除广播（S5）：单机直接调用，多人 authority RPC
+func _broadcast_level_wave_cleared(wave_id: String) -> void:
+	if NetworkManager.is_network_active():
+		level_wave_cleared.rpc(wave_id)
+	else:
+		level_wave_cleared(wave_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func level_wave_cleared(wave_id: String) -> void:
+	event_level_wave_cleared.emit(wave_id)
 
 
 @rpc("authority", "call_local", "reliable")

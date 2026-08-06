@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "波次配置表（M2 预制作草案，2026-08-04，待平衡；M3-S4 缩放至 60-80 数量级）。字段照 tech-plan §7.2：id/name/composition/concurrent_cap/spawn_style/spawn_interval/cleared_when/reward。composition 为该波总刷怪数（按类型），单波总和 ≤ 100（tech-plan §10 同屏硬上限）；3 波递进 20→45→80，末波峰值 80 覆盖'同屏 60-80 常驻'验收（M3-S4；100 峰值由 tools/debug_pool_perf.gd 加压实测，非正式波次）。concurrent_cap 为该波同屏上限：波 1/波 3 = 全量在场，波 2 < 总量体现渐进刷怪。spawn_style：trickle=渐进流出 / burst=一波涌入；spawn_interval 单位=秒（base，Director 会按压力缩放，tech-plan §7.3）。cleared_when 统一 all_spawned_killed（全部刷出且杀光）。reward 于 Intermission 时按 health_packs/ammo 数量在 supply_spot 固定点刷新补给点（数据驱动，M2-S4）。特感配额：波 3 charger/spitter 各 1（同屏特感 ≤5，director.json max_simultaneous 控制）。",
+  "note": "波次配置表（M2 预制作草案，2026-08-04，待平衡；M3-S4 缩放至 60-80 数量级；M3-S5 增 level_waves 关卡触发波次）。字段照 tech-plan §7.2：id/name/composition/concurrent_cap/spawn_style/spawn_interval/cleared_when/reward。composition 为该波总刷怪数（按类型），单波总和 ≤ 100（tech-plan §10 同屏硬上限）；3 波递进 20→45→80，末波峰值 80 覆盖'同屏 60-80 常驻'验收（M3-S4；100 峰值由 tools/debug_pool_perf.gd 加压实测，非正式波次）。concurrent_cap 为该波同屏上限：波 1/波 3 = 全量在场，波 2 < 总量体现渐进刷怪。spawn_style：trickle=渐进流出 / burst=一波涌入；spawn_interval 单位=秒（base，Director 会按压力缩放，tech-plan §7.3）。cleared_when 统一 all_spawned_killed（全部刷出且杀光）。reward 于 Intermission 时按 health_packs/ammo 数量在 supply_spot 固定点刷新补给点（数据驱动，M2-S4）。特感配额：波 3 charger/spitter 各 1（同屏特感 ≤5，director.json max_simultaneous 控制）。level_waves 为《铁锈仓库》推进制触发波次（M3-S5，LevelAdvance 按区域触发，WaveManager.start_wave_config 启动）：level_horde_01=通道中段第一波（24 只 trickle）、level_holdout=装卸广场守点高潮（60 common+1 冲撞者+1 喷吐者，burst，60-80 常驻口径内）、level_harass=货场搜刮期小骚扰（8 只，可选简单版）。",
   "waves": [
     {
       "id": "wave_01",
@@ -29,6 +29,38 @@
       "concurrent_cap": 80,
       "spawn_style": "burst",
       "spawn_interval": 1.2,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 2, "ammo": 2 }
+    }
+  ],
+  "level_waves": [
+    {
+      "id": "level_harass",
+      "name": "小骚扰",
+      "composition": { "common": 8 },
+      "concurrent_cap": 8,
+      "spawn_style": "trickle",
+      "spawn_interval": 1.5,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 0, "ammo": 0 }
+    },
+    {
+      "id": "level_horde_01",
+      "name": "第一波·通道尸潮",
+      "composition": { "common": 24 },
+      "concurrent_cap": 24,
+      "spawn_style": "trickle",
+      "spawn_interval": 1.0,
+      "cleared_when": { "type": "all_spawned_killed" },
+      "reward": { "health_packs": 0, "ammo": 0 }
+    },
+    {
+      "id": "level_holdout",
+      "name": "守点高潮",
+      "composition": { "common": 60, "charger": 1, "spitter": 1 },
+      "concurrent_cap": 60,
+      "spawn_style": "burst",
+      "spawn_interval": 0.5,
       "cleared_when": { "type": "all_spawned_killed" },
       "reward": { "health_packs": 2, "ammo": 2 }
     }

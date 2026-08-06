@@ -19,6 +19,7 @@ extends CanvasLayer
 @onready var _wave_toast: Label = $Root/WaveToast
 @onready var _pickup_hint: Label = $Root/PickupHint
 @onready var _special_warn: Label = $Root/SpecialWarn
+@onready var _objective: Label = $Root/LevelObjective
 
 ## 波次 Setup 倒计时展示（纯展示本地动画；波次是否开始由服务器 wave_begun 广播决定）
 var _display_countdown := 0.0
@@ -36,6 +37,16 @@ func _ready() -> void:
 	wm.event_wave_cleared.connect(_on_wave_cleared)
 	wm.event_intermission_started.connect(_on_intermission_started)
 	wm.event_victory.connect(_on_victory)
+	# S5 推进制：订阅 LevelAdvance 阶段/守点/完成/失败事件（不存在则静默跳过）
+	var la := get_node_or_null("../Gameplay/LevelAdvance") as LevelAdvance
+	if la != null:
+		la.event_phase_changed.connect(_on_phase_changed)
+		la.event_holdout_triggered.connect(_on_holdout_triggered)
+		la.event_level_complete.connect(_on_level_complete)
+		la.event_level_failed.connect(_on_level_failed)
+		# 初始阶段（LevelAdvance 先于 HUD _ready 广播，直接读当前值兜底）
+		_objective.text = "目标：%s" % LevelAdvance.PHASE_NAMES[la.phase]
+		_objective.visible = true
 
 
 func _process(delta: float) -> void:
@@ -87,6 +98,7 @@ func _hide_all() -> void:
 	_dead_overlay.visible = false
 	_pickup_hint.visible = false
 	_special_warn.visible = false
+	_objective.visible = false
 
 
 ## 找本机玩家（players 组中 is_multiplayer_authority() 为真的那个；单机即唯一玩家）
@@ -136,7 +148,10 @@ func _tick_special_warn(player: Node3D) -> void:
 # --- 波次预告/播报（只读展示，服务器广播驱动；不持有游戏状态） ---
 
 func _on_wave_started(wave_index: int, wave_name: String, countdown: float) -> void:
-	_wave_banner.text = "第 %d 波：%s" % [wave_index + 1, wave_name]
+	if wave_index < 0:
+		_wave_banner.text = wave_name  # 关卡触发波次（index=-1）：只显示波次名
+	else:
+		_wave_banner.text = "第 %d 波：%s" % [wave_index + 1, wave_name]
 	_wave_banner.visible = true
 	_display_countdown = countdown
 	_last_display_secs = -1
@@ -178,3 +193,30 @@ func _on_victory() -> void:
 	_wave_countdown.text = "按 Enter 再来一局"
 	_wave_countdown.visible = true
 	_wave_toast.visible = false
+
+
+# --- S5 推进制：目标/守点/完成/失败提示（只读展示） ---
+
+func _on_phase_changed(_phase: int, phase_name: String) -> void:
+	_objective.text = "目标：%s" % phase_name
+	_objective.visible = true
+
+
+func _on_holdout_triggered() -> void:
+	_wave_toast.text = "守点高潮！撑住直到尸潮清除"
+	_wave_toast.visible = true
+	_wave_toast.modulate = Color(1, 0.35, 0.15, 1)
+
+
+func _on_level_complete(_segment: int) -> void:
+	_wave_toast.text = "段落完成！已存档（save/progress.json）"
+	_wave_toast.visible = true
+	_wave_toast.modulate = Color(0.4, 1, 0.5, 1)
+	_objective.text = "目标：%s" % "已完成"
+	_objective.visible = true
+
+
+func _on_level_failed() -> void:
+	_wave_toast.text = "全员阵亡，段落失败"
+	_wave_toast.visible = true
+	_wave_toast.modulate = Color(1, 0.35, 0.15, 1)

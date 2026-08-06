@@ -1,0 +1,576 @@
+[gd_scene load_steps=46 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/area_trigger.gd" id="1_area"]
+[ext_resource type="Script" path="res://scripts/gameplay/door.gd" id="2_door"]
+[ext_resource type="PackedScene" path="res://scenes/environment/supply_point.tscn" id="3_supply"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.45, 0.5, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.55, 0.5, 0.45, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_door"]
+albedo_color = Color(0.6, 0.3, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_region_safe"]
+albedo_color = Color(0.3, 0.5, 0.9, 0.35)
+transparency = 1
+
+[sub_resource type="StandardMaterial3D" id="Mat_region_yard"]
+albedo_color = Color(0.4, 0.8, 0.4, 0.35)
+transparency = 1
+
+[sub_resource type="StandardMaterial3D" id="Mat_region_corridor"]
+albedo_color = Color(0.95, 0.6, 0.2, 0.35)
+transparency = 1
+
+[sub_resource type="StandardMaterial3D" id="Mat_region_plaza"]
+albedo_color = Color(0.9, 0.3, 0.3, 0.35)
+transparency = 1
+
+[sub_resource type="StandardMaterial3D" id="Mat_region_backdoor"]
+albedo_color = Color(0.3, 0.5, 0.9, 0.35)
+transparency = 1
+
+[sub_resource type="BoxMesh" id="BM_ground"]
+size = Vector3(76, 0.2, 36)
+
+[sub_resource type="BoxShape3D" id="BS_ground"]
+size = Vector3(76, 0.2, 36)
+
+[sub_resource type="BoxMesh" id="BM_region_safe"]
+size = Vector3(10, 0.02, 16)
+
+[sub_resource type="BoxMesh" id="BM_region_yard"]
+size = Vector3(22, 0.02, 28)
+
+[sub_resource type="BoxMesh" id="BM_region_corridor"]
+size = Vector3(14, 0.02, 6)
+
+[sub_resource type="BoxMesh" id="BM_region_plaza"]
+size = Vector3(20, 0.02, 32)
+
+[sub_resource type="BoxMesh" id="BM_region_backdoor"]
+size = Vector3(8, 0.02, 8)
+
+[sub_resource type="BoxMesh" id="BM_wall_10_3_05"]
+size = Vector3(10, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_10_3_05"]
+size = Vector3(10, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_16"]
+size = Vector3(0.5, 3, 16)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_16"]
+size = Vector3(0.5, 3, 16)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_66"]
+size = Vector3(0.5, 3, 6.6)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_66"]
+size = Vector3(0.5, 3, 6.6)
+
+[sub_resource type="BoxMesh" id="BM_wall_22_3_05"]
+size = Vector3(22, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_22_3_05"]
+size = Vector3(22, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_125"]
+size = Vector3(0.5, 3, 12.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_125"]
+size = Vector3(0.5, 3, 12.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_14_3_05"]
+size = Vector3(14, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_14_3_05"]
+size = Vector3(14, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_15"]
+size = Vector3(0.5, 3, 1.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_15"]
+size = Vector3(0.5, 3, 1.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_75_3_05"]
+size = Vector3(7.5, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_75_3_05"]
+size = Vector3(7.5, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_14"]
+size = Vector3(0.5, 3, 14)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_14"]
+size = Vector3(0.5, 3, 14)
+
+[sub_resource type="BoxMesh" id="BM_wall_8_3_05"]
+size = Vector3(8, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_8_3_05"]
+size = Vector3(8, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_8"]
+size = Vector3(0.5, 3, 8)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_8"]
+size = Vector3(0.5, 3, 8)
+
+[sub_resource type="BoxMesh" id="BM_door"]
+size = Vector3(0.2, 3, 2.8)
+
+[sub_resource type="BoxShape3D" id="BS_door"]
+size = Vector3(0.2, 3, 2.8)
+
+[sub_resource type="BoxShape3D" id="BS_trigger_2_4_3"]
+size = Vector3(2, 4, 3)
+
+[sub_resource type="BoxShape3D" id="BS_trigger_3_4_4"]
+size = Vector3(3, 4, 4)
+
+[sub_resource type="BoxShape3D" id="BS_trigger_25_4_4"]
+size = Vector3(2.5, 4, 4)
+
+[sub_resource type="BoxShape3D" id="BS_trigger_3_4_6"]
+size = Vector3(3, 4, 6)
+
+[sub_resource type="BoxShape3D" id="BS_trigger_25_4_5"]
+size = Vector3(2.5, 4, 5)
+
+[node name="Rustyard" type="Node3D"]
+
+[node name="Ground" type="StaticBody3D" parent="."]
+position = Vector3(11, -0.1, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("BM_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Collision" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BS_ground")
+
+[node name="RegionPlates" type="Node3D" parent="."]
+
+[node name="SafeRoomPlate" type="MeshInstance3D" parent="RegionPlates"]
+editor_description = "区域1：开场安全屋（蓝色，门可关=暂时安全）"
+position = Vector3(-21, 0.02, 0)
+mesh = SubResource("BM_region_safe")
+surface_material_override/0 = SubResource("Mat_region_safe")
+
+[node name="YardPlate" type="MeshInstance3D" parent="RegionPlates"]
+editor_description = "区域2：开阔货场（搜刮区，绿色，2-3 补给点）"
+position = Vector3(-5, 0.02, 0)
+mesh = SubResource("BM_region_yard")
+surface_material_override/0 = SubResource("Mat_region_yard")
+
+[node name="CorridorPlate" type="MeshInstance3D" parent="RegionPlates"]
+editor_description = "区域3：狭窄货运通道（警戒区，橙色，视线受限，中段 1 弹药点）"
+position = Vector3(13, 0.02, 0)
+mesh = SubResource("BM_region_corridor")
+surface_material_override/0 = SubResource("Mat_region_corridor")
+
+[node name="PlazaPlate" type="MeshInstance3D" parent="RegionPlates"]
+editor_description = "区域4：中央装卸广场（高潮区，红色，四面出入口，固定守点尸潮）"
+position = Vector3(30, 0.02, 0)
+mesh = SubResource("BM_region_plaza")
+surface_material_override/0 = SubResource("Mat_region_plaza")
+
+[node name="BackdoorPlate" type="MeshInstance3D" parent="RegionPlates"]
+editor_description = "区域5：后门安全屋（蓝色，到达=段落完成：回血/补给/存档）"
+position = Vector3(44, 0.02, 0)
+mesh = SubResource("BM_region_backdoor")
+surface_material_override/0 = SubResource("Mat_region_backdoor")
+
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="SafeNorth" type="StaticBody3D" parent="Walls"]
+position = Vector3(-21, 1.5, -8)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeNorth"]
+mesh = SubResource("BM_wall_10_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeNorth"]
+shape = SubResource("BS_wall_10_3_05")
+
+[node name="SafeSouth" type="StaticBody3D" parent="Walls"]
+position = Vector3(-21, 1.5, 8)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeSouth"]
+mesh = SubResource("BM_wall_10_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeSouth"]
+shape = SubResource("BS_wall_10_3_05")
+
+[node name="SafeWest" type="StaticBody3D" parent="Walls"]
+position = Vector3(-26, 1.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeWest"]
+mesh = SubResource("BM_wall_05_3_16")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeWest"]
+shape = SubResource("BS_wall_05_3_16")
+
+[node name="SafeEastA" type="StaticBody3D" parent="Walls"]
+position = Vector3(-16, 1.5, -4.7)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeEastA"]
+mesh = SubResource("BM_wall_05_3_66")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeEastA"]
+shape = SubResource("BS_wall_05_3_66")
+
+[node name="SafeEastB" type="StaticBody3D" parent="Walls"]
+position = Vector3(-16, 1.5, 4.7)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeEastB"]
+mesh = SubResource("BM_wall_05_3_66")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeEastB"]
+shape = SubResource("BS_wall_05_3_66")
+
+[node name="YardNorth" type="StaticBody3D" parent="Walls"]
+position = Vector3(-5, 1.5, -14)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/YardNorth"]
+mesh = SubResource("BM_wall_22_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/YardNorth"]
+shape = SubResource("BS_wall_22_3_05")
+
+[node name="YardSouth" type="StaticBody3D" parent="Walls"]
+position = Vector3(-5, 1.5, 14)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/YardSouth"]
+mesh = SubResource("BM_wall_22_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/YardSouth"]
+shape = SubResource("BS_wall_22_3_05")
+
+[node name="YardEastA" type="StaticBody3D" parent="Walls"]
+position = Vector3(6, 1.5, -7.75)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/YardEastA"]
+mesh = SubResource("BM_wall_05_3_125")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/YardEastA"]
+shape = SubResource("BS_wall_05_3_125")
+
+[node name="YardEastB" type="StaticBody3D" parent="Walls"]
+position = Vector3(6, 1.5, 7.75)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/YardEastB"]
+mesh = SubResource("BM_wall_05_3_125")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/YardEastB"]
+shape = SubResource("BS_wall_05_3_125")
+
+[node name="CorrNorth" type="StaticBody3D" parent="Walls"]
+position = Vector3(13, 1.5, -3)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/CorrNorth"]
+mesh = SubResource("BM_wall_14_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/CorrNorth"]
+shape = SubResource("BS_wall_14_3_05")
+
+[node name="CorrSouth" type="StaticBody3D" parent="Walls"]
+position = Vector3(13, 1.5, 3)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/CorrSouth"]
+mesh = SubResource("BM_wall_14_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/CorrSouth"]
+shape = SubResource("BS_wall_14_3_05")
+
+[node name="CorrEastA" type="StaticBody3D" parent="Walls"]
+position = Vector3(20, 1.5, -2.25)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/CorrEastA"]
+mesh = SubResource("BM_wall_05_3_15")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/CorrEastA"]
+shape = SubResource("BS_wall_05_3_15")
+
+[node name="CorrEastB" type="StaticBody3D" parent="Walls"]
+position = Vector3(20, 1.5, 2.25)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/CorrEastB"]
+mesh = SubResource("BM_wall_05_3_15")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/CorrEastB"]
+shape = SubResource("BS_wall_05_3_15")
+
+[node name="PlazaNorthA" type="StaticBody3D" parent="Walls"]
+position = Vector3(23.75, 1.5, -16)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaNorthA"]
+mesh = SubResource("BM_wall_75_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaNorthA"]
+shape = SubResource("BS_wall_75_3_05")
+
+[node name="PlazaNorthB" type="StaticBody3D" parent="Walls"]
+position = Vector3(36.25, 1.5, -16)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaNorthB"]
+mesh = SubResource("BM_wall_75_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaNorthB"]
+shape = SubResource("BS_wall_75_3_05")
+
+[node name="PlazaSouthA" type="StaticBody3D" parent="Walls"]
+position = Vector3(23.75, 1.5, 16)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaSouthA"]
+mesh = SubResource("BM_wall_75_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaSouthA"]
+shape = SubResource("BS_wall_75_3_05")
+
+[node name="PlazaSouthB" type="StaticBody3D" parent="Walls"]
+position = Vector3(36.25, 1.5, 16)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaSouthB"]
+mesh = SubResource("BM_wall_75_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaSouthB"]
+shape = SubResource("BS_wall_75_3_05")
+
+[node name="PlazaEastA" type="StaticBody3D" parent="Walls"]
+position = Vector3(40, 1.5, -9)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaEastA"]
+mesh = SubResource("BM_wall_05_3_14")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaEastA"]
+shape = SubResource("BS_wall_05_3_14")
+
+[node name="PlazaEastB" type="StaticBody3D" parent="Walls"]
+position = Vector3(40, 1.5, 9)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/PlazaEastB"]
+mesh = SubResource("BM_wall_05_3_14")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/PlazaEastB"]
+shape = SubResource("BS_wall_05_3_14")
+
+[node name="BackNorth" type="StaticBody3D" parent="Walls"]
+position = Vector3(44, 1.5, -4)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/BackNorth"]
+mesh = SubResource("BM_wall_8_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/BackNorth"]
+shape = SubResource("BS_wall_8_3_05")
+
+[node name="BackSouth" type="StaticBody3D" parent="Walls"]
+position = Vector3(44, 1.5, 4)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/BackSouth"]
+mesh = SubResource("BM_wall_8_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/BackSouth"]
+shape = SubResource("BS_wall_8_3_05")
+
+[node name="BackEast" type="StaticBody3D" parent="Walls"]
+position = Vector3(48, 1.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/BackEast"]
+mesh = SubResource("BM_wall_05_3_8")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/BackEast"]
+shape = SubResource("BS_wall_05_3_8")
+
+[node name="SafeDoor" type="StaticBody3D" parent="Walls"]
+editor_description = "开场安全屋门：初始关闭（暂时安全），玩家靠近开门"
+position = Vector3(-16, 1.5, 0)
+script = ExtResource("2_door")
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/SafeDoor"]
+mesh = SubResource("BM_door")
+surface_material_override/0 = SubResource("Mat_door")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/SafeDoor"]
+shape = SubResource("BS_door")
+
+[node name="Triggers" type="Node3D" parent="."]
+
+[node name="SafeExit" type="Area3D" parent="Triggers" groups=["level_trigger"]]
+editor_description = "区域触发：安全屋门（safe_exit）——玩家靠近开门→进入货场"
+script = ExtResource("1_area")
+trigger_id = "safe_exit"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.3, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Triggers/SafeExit"]
+shape = SubResource("BS_trigger_2_4_3")
+
+[node name="CorridorEnter" type="Area3D" parent="Triggers" groups=["level_trigger"]]
+editor_description = "区域触发：进入货运通道（corridor_enter）"
+script = ExtResource("1_area")
+trigger_id = "corridor_enter"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Triggers/CorridorEnter"]
+shape = SubResource("BS_trigger_3_4_4")
+
+[node name="CorridorMid" type="Area3D" parent="Triggers" groups=["level_trigger"]]
+editor_description = "区域触发：通道中段（corridor_mid）——固定第一波尸潮"
+script = ExtResource("1_area")
+trigger_id = "corridor_mid"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Triggers/CorridorMid"]
+shape = SubResource("BS_trigger_25_4_4")
+
+[node name="PlazaEnter" type="Area3D" parent="Triggers" groups=["level_trigger"]]
+editor_description = "区域触发：进入装卸广场（plaza_enter）——固定守点高潮尸潮"
+script = ExtResource("1_area")
+trigger_id = "plaza_enter"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.5, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Triggers/PlazaEnter"]
+shape = SubResource("BS_trigger_3_4_6")
+
+[node name="BackdoorEnter" type="Area3D" parent="Triggers" groups=["level_trigger"]]
+editor_description = "区域触发：到达后门安全屋入口（backdoor_enter）——段落完成：回血/补给/存档"
+script = ExtResource("1_area")
+trigger_id = "backdoor_enter"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 1.5, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="Triggers/BackdoorEnter"]
+shape = SubResource("BS_trigger_25_4_5")
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="PlayerSpawns" type="Node3D" parent="Markers"]
+
+[node name="SpawnSafeA" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -3)
+
+[node name="SpawnSafeB" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 3)
+
+[node name="HordeSpawns" type="Node3D" parent="Markers"]
+
+[node name="HordeYardA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -12)
+
+[node name="HordeYardB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 12)
+
+[node name="HordeYardC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -13)
+
+[node name="HordeYardD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 13)
+
+[node name="HordeCorrA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -2.5)
+
+[node name="HordeCorrB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 2.5)
+
+[node name="HordeCorrC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 0, -2.5)
+
+[node name="HordeCorrD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 0, 2.5)
+
+[node name="HordePlazaA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -14)
+
+[node name="HordePlazaB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, -15)
+
+[node name="HordePlazaC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, -13)
+
+[node name="HordePlazaD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 14)
+
+[node name="HordePlazaE" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 15)
+
+[node name="HordePlazaF" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 13)
+
+[node name="HordePlazaG" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 0)
+
+[node name="HordePlazaH" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 0)
+
+[node name="SupplySpots" type="Node3D" parent="Markers"]
+
+[node name="SpotYardA" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -8)
+
+[node name="SpotYardB" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 8)
+
+[node name="SpotYardC" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -4)
+
+[node name="SpotCorr" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, 0)
+
+[node name="SpotBack" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, 0)
+
+[node name="Pickups" type="Node3D" parent="."]
+
+[node name="SupplyYardAmmo" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "货场补给点：弹药（蓝）"
+position = Vector3(-10, 0, -8)
+supply_type = 0
+
+[node name="SupplyYardHealth" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "货场补给点：医疗（红）"
+position = Vector3(-10, 0, 8)
+supply_type = 1
+
+[node name="SupplyYardAmmo2" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "货场补给点：弹药（蓝）"
+position = Vector3(2, 0, -4)
+supply_type = 0
+
+[node name="SupplyCorrAmmo" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "通道中段补给点：弹药（蓝）"
+position = Vector3(13, 0, 0)
+supply_type = 0
+
+[node name="SupplyBackHealth" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "后门安全屋补给点：医疗（红）"
+position = Vector3(44, 0, -2)
+supply_type = 1
+
+[node name="SupplyBackAmmo" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "后门安全屋补给点：弹药（蓝）"
+position = Vector3(44, 0, 2)
+supply_type = 0
