@@ -3,9 +3,9 @@
 *.import
 *.translation
 
-# 导出产物（M3 再启用，先保留配置可提交）
+# 导出产物（export_presets.cfg 为 M3-S8 交付物，随 git 提交）
 export/
-export_presets.cfg
+builds/
 
 # 操作系统杂项
 .DS_Store
