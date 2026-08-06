@@ -14,9 +14,9 @@
     "max_s": 5.0
   },
   "specials": {
-    "enabled": false,
+    "enabled": true,
     "threshold": 0.7,
-    "max_simultaneous": 0,
+    "max_simultaneous": 2,
     "cooldown_s": 30.0
   },
   "degrade": {

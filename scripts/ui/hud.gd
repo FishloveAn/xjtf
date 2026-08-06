@@ -18,6 +18,7 @@ extends CanvasLayer
 @onready var _wave_countdown: Label = $Root/WaveCountdown
 @onready var _wave_toast: Label = $Root/WaveToast
 @onready var _pickup_hint: Label = $Root/PickupHint
+@onready var _special_warn: Label = $Root/SpecialWarn
 
 ## 波次 Setup 倒计时展示（纯展示本地动画；波次是否开始由服务器 wave_begun 广播决定）
 var _display_countdown := 0.0
@@ -74,6 +75,8 @@ func _process(delta: float) -> void:
 	if supply != null:
 		var type_name := "弹药" if supply.supply_type == SupplyPoint.Type.AMMO else "医疗"
 		_pickup_hint.text = "按 E 拾取 %s" % type_name
+	# M3-S2 冲撞者前摇警示（可选表现，简单为主）：15m 内冲撞者处于蓄力（WINDUP=2）→ 提示
+	_tick_special_warn(player)
 
 
 func _hide_all() -> void:
@@ -83,6 +86,7 @@ func _hide_all() -> void:
 	_revive_bar.visible = false
 	_dead_overlay.visible = false
 	_pickup_hint.visible = false
+	_special_warn.visible = false
 
 
 ## 找本机玩家（players 组中 is_multiplayer_authority() 为真的那个；单机即唯一玩家）
@@ -115,6 +119,18 @@ func _find_nearby_supply(player: Node3D) -> SupplyPoint:
 			best_dist = dist
 			best = s as SupplyPoint
 	return best
+
+
+## M3-S2 冲撞者前摇警示：15m 内冲撞者处于蓄力（WINDUP=2，见 zombie_ai_charger.gd）→ 红字提示
+func _tick_special_warn(player: Node3D) -> void:
+	var show := false
+	for c in get_tree().get_nodes_in_group("zombie_specials"):
+		var ai := c.get_node_or_null("AI")
+		if ai != null and int(ai.get("state")) == 2 \
+				and player.global_position.distance_to(c.global_position) <= 15.0:
+			show = true
+			break
+	_special_warn.visible = show
 
 
 # --- 波次预告/播报（只读展示，服务器广播驱动；不持有游戏状态） ---

@@ -10,7 +10,8 @@
 ## 输出：get_scaled_spawn_interval(base) 供 WaveManager 调用；周期 print 摘要（E4 可观测）
 ## 谁调用：仅服务器（刷怪计时只在服务器推进，tech-plan §4.4）；客户端不计算
 ## 规范：tech-plan §7.3；数据全部来自 director.json（改 JSON 重启生效）；
-##       M2 无特感：specials.enabled=false 仅读取结构占位，不触发；
+##       M3-S2：specials 启用（enabled/threshold/max_simultaneous/cooldown），
+##       WaveManager 经 can_spawn_special()/special_cap()/mark_special_spawned() 接特感时机；
 ##       degrade 降级开关仅读取预留，实际降级逻辑 S3 对象池时实现
 ## 注意：burst 波（第 3 波）用固定批次间隔，不走压力缩放（S2 只接管 trickle）
 
@@ -31,6 +32,10 @@ var _max_scale := 1.6
 var _min_s := 0.5
 var _max_s := 5.0
 var _specials_enabled := false
+var _specials_threshold := 0.7
+var _specials_max_simultaneous := 2
+var _specials_cooldown_s := 30.0
+var _last_special_spawn_s := -INF  # 服务器时间戳（秒），初始 -INF 使首次冷却已过
 var _degrade_enabled := false
 
 var _wm: WaveManager = null
@@ -125,13 +130,40 @@ func _load_params() -> bool:
 	_max_scale = float(si.get("max_scale", 1.6))
 	_min_s = float(si.get("min_s", 0.5))
 	_max_s = float(si.get("max_s", 5.0))
-	# 特感占位（M2 无特感）：仅读取结构，enabled=false 不触发
+	# 特感（M3-S2 启用）：pressure 时机 / 同屏上限 / 冷却，全部 director.json 驱动
 	var specials: Dictionary = _params.get("specials", {})
 	_specials_enabled = bool(specials.get("enabled", false))
+	_specials_threshold = float(specials.get("threshold", 0.7))
+	_specials_max_simultaneous = int(specials.get("max_simultaneous", 2))
+	_specials_cooldown_s = float(specials.get("cooldown_s", 30.0))
 	# 降级开关占位（S3 对象池时实现实际降级）：仅读取
 	var degrade: Dictionary = _params.get("degrade", {})
 	_degrade_enabled = bool(degrade.get("enabled", false))
 	return true
+
+
+## 特感同屏上限：director.json max_simultaneous 生效，硬上限 5（tech-plan §10）
+func special_cap() -> int:
+	var cap := _specials_max_simultaneous
+	if cap <= 0:
+		return 5
+	return mini(cap, 5)
+
+
+## Director 特感时机：pressure ≥ 阈值 且 冷却已过 → 允许刷特感（配合 composition 固定配额）
+func can_spawn_special() -> bool:
+	if not _specials_enabled:
+		return false
+	if pressure < _specials_threshold:
+		return false
+	if Time.get_ticks_msec() / 1000.0 - _last_special_spawn_s < _specials_cooldown_s:
+		return false
+	return true
+
+
+## 刷怪方每出一只特感调用：推进特感冷却（压节奏，防连刷）
+func mark_special_spawned() -> void:
+	_last_special_spawn_s = Time.get_ticks_msec() / 1000.0
 
 
 func _debug_print() -> void:

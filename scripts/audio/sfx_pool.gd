@@ -24,6 +24,9 @@ const EVENT_MAP := {
 	"zombie_died": "res://assets/audio/sfx/sfx_zombie_died_01.ogg",
 	"player_hurt": "res://assets/audio/sfx/sfx_player_hurt_01.ogg",
 	"hit_confirm": "res://assets/audio/sfx/sfx_hit_confirm_01.ogg",
+	"charge_windup": "res://assets/audio/sfx/sfx_charge_windup_01.ogg",
+	"charger_hit": "res://assets/audio/sfx/sfx_charger_hit_01.ogg",
+	"charger_death": "res://assets/audio/sfx/sfx_charger_death_01.ogg",
 }
 
 var _pool: Array[AudioStreamPlayer3D] = []
@@ -62,10 +65,12 @@ func play_3d(event_name: String, world_pos: Vector3 = Vector3.ZERO) -> void:
 	player.play()
 
 
-## 取流（带缓存）；load 失败返回 null
+## 取流（带缓存）；素材缺失静默跳过（先查文件存在，避免 load() 缺失路径打红色 ERROR）
 func _get_stream(path: String) -> AudioStream:
 	if _stream_cache.has(path):
 		return _stream_cache[path]
+	if not FileAccess.file_exists(path):
+		return null  # 素材未就位：静默跳过（S7；素材就位后即出声）
 	var stream := load(path) as AudioStream
 	if stream != null:
 		_stream_cache[path] = stream

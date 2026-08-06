@@ -94,6 +94,26 @@ func take_damage(dmg: float, attacker: Node = null) -> void:
 				state = State.DOWN  # 倒地不是死亡：不 emit died
 
 
+## 服务器：冲撞者命中 → 强制倒地（压制，M3-S2）。ALIVE→DOWN（hp=0，可被队友救援）；
+## DOWN 再被撞→DEAD；DEAD 无效。与 take_damage 的 DOWN 语义完全一致（倒地可救援、
+## 倒地再受击死亡），复用现有倒地/救援/HUD 链路，不新增 PIN 状态。
+func apply_pin(attacker: Node = null) -> void:
+	if not NetworkManager.is_server():
+		return
+	match state:
+		State.DEAD:
+			return
+		State.DOWN:
+			_clear_active_revive()
+			state = State.DEAD
+			died.emit(attacker)
+		State.ALIVE:
+			hp = 0.0
+			damaged.emit(1.0, attacker, hp)
+			state = State.DOWN
+			_broadcast_player_hurt()
+
+
 ## 服务器：医疗补给恢复（S4 补给点）。ALIVE 回血（setter 钳制到 max_hp）；
 ## DOWN 倒地玩家可被救起（state→ALIVE，血量保底 REVIVE_HP）；DEAD 无效
 func apply_healing(amount: float) -> void:
