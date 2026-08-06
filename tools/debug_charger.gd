@@ -68,6 +68,8 @@ func _run() -> void:
 	if charger == null:
 		_finish()
 		return
+	# M3-ART-P1：动画验证（headless 无渲染，查 AnimationPlayer 状态匹配 AI 状态）
+	_verify_special_anim(charger, "spawn", "生成时 AnimationPlayer 播放 spawn 槽（spawn→idle 后回 idle）")
 	var saw_windup := false
 	var saw_charge := false
 	var saw_stagger := false
@@ -240,3 +242,22 @@ func _is_charger_node(node: Node) -> bool:
 		return false
 	var script: Script = ai.get_script()
 	return script != null and String(script.resource_path).ends_with("zombie_ai_charger.gd")
+
+
+## M3-ART-P1：特感动画验证（头less 用脚本验证 AnimationPlayer 状态匹配 AI 状态）
+const _SPECIAL_ANIM_SLOTS := ["idle", "walk", "attack", "hurt", "death", "spawn"]
+func _verify_special_anim(node: Node, expected_slot: String, label: String) -> void:
+	var anim: AnimationPlayer = null
+	var visual := node.get_node_or_null("Visual")
+	if visual != null:
+		anim = visual.find_child("AnimationPlayer", true, false)
+	_check(anim != null, "AnimationPlayer 存在（Visual 子树）")
+	if anim == null:
+		return
+	for slot in _SPECIAL_ANIM_SLOTS:
+		_check(anim.has_animation(slot), "动画槽存在 '" + slot + "'")
+	_check(anim.get_animation_list().size() == _SPECIAL_ANIM_SLOTS.size(),
+		"动画数量 = " + str(_SPECIAL_ANIM_SLOTS.size()) + "（实际 " + str(anim.get_animation_list().size()) + "）")
+	# 实际 current_animation 验证（spawn→idle 是一次性初始播放，spawn 播完后切 idle）
+	_check(anim.current_animation == expected_slot or anim.current_animation == "idle",
+		label + " current_animation='" + String(anim.current_animation) + "'")

@@ -20,6 +20,7 @@ const ZOMBIES_JSON_PATH := "res://data/zombies.json"
 
 var _body: CharacterBody3D
 var _visual: Node3D = null
+var _anim_player: AnimationPlayer = null   # M3-ART-P1：特感 AnimationPlayer（glb 内嵌），按状态切换播放
 var _die_clear_s := 2.5
 var _visual_tween: Tween = null     # 前摇/死亡表现 tween，跨状态切换必须 kill
 
@@ -42,6 +43,32 @@ func _ready() -> void:
 		health.died.connect(_on_died)
 	add_to_group("zombie_specials")  # HUD 前摇警示等按组查找
 	_setup_sync()
+	_bind_anim_player()  # M3-ART-P1：特感带骨骼 glb（含 AnimationPlayer），按状态切换播放
+
+
+## M3-ART-P1：查找 glb 实例下的 AnimationPlayer 并初始化（spawn 一次）
+func _bind_anim_player() -> void:
+	if _visual == null:
+		return
+	_anim_player = _visual.find_child("AnimationPlayer", true, false)
+	if _anim_player == null:
+		return  # 无骨骼模型不要求动画（保持原状可跑）
+	# 生成时播放 spawn 一次（任务规范：spawn 槽位，缺失时降级为代码淡入——本流程 6 槽已含 spawn）
+	if _anim_player.has_animation("spawn"):
+		_anim_player.play("spawn")
+	else:
+		_anim_player.play("idle")
+
+
+## M3-ART-P1：按状态播放指定动画槽（特感 AnimationPlayer 6 槽：idle/walk/attack/hurt/death/spawn）
+## 子类在状态切换点调用；无对应槽时回退 idle（pause/loop 保持默认）
+func _play_anim(slot: String) -> void:
+	if _anim_player == null:
+		return
+	if _anim_player.has_animation(slot):
+		_anim_player.play(slot)
+	elif _anim_player.has_animation("idle"):
+		_anim_player.play("idle")
 
 
 ## 子类覆盖：zombies.json 条目 id（默认 charger；S3 喷吐者覆写 spitter）

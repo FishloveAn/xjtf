@@ -98,6 +98,7 @@ func _tick_idle() -> void:
 	if target != null and _body.global_position.distance_to(target.global_position) <= _sight_range:
 		_target = target
 		state = State.CHASE
+		_play_anim("walk")  # M3-ART-P1：追击 → walk 槽
 
 
 func _tick_chase(delta: float) -> void:
@@ -140,6 +141,7 @@ func _start_windup() -> void:
 	_recompute_direction()  # 蓄力期间站定转向目标
 	_play_sfx("charge_windup")  # 音效钩子（S7 接素材，缺失静默跳过）
 	_pulse_visual()  # 前摇表现：视觉放大脉冲（基元占位，M3 后期换骨骼动画）
+	_play_anim("attack")  # M3-ART-P1：蓄力前摇 → attack 槽（Idle_Attack 改色骨骼动画）
 
 
 func _tick_windup(delta: float) -> void:
@@ -152,6 +154,7 @@ func _tick_windup(delta: float) -> void:
 	if _target == null or not _target_alive():
 		_reset_visual()
 		state = State.CHASE
+		_play_anim("walk")  # M3-ART-P1：取消冲撞 → 追击 walk
 		return
 	_charge_dir = _target.global_position - _body.global_position
 	_charge_dir.y = 0.0
@@ -162,6 +165,7 @@ func _tick_windup(delta: float) -> void:
 	_charge_travelled = 0.0
 	_body.collision_mask = CHARGE_MASK  # 冲撞只撞世界，穿过丧尸
 	state = State.CHARGE
+	_play_anim("walk")  # M3-ART-P1：冲撞移动 → walk 槽
 
 
 func _tick_charge(delta: float) -> void:
@@ -196,6 +200,7 @@ func _enter_stagger() -> void:
 	_cooldown_timer = _cooldown_s  # 冲撞后冷却（数据驱动）再回追击
 	_body.collision_mask = COLLISION_MASK
 	_reset_visual()
+	_play_anim("hurt")  # M3-ART-P1：硬直/受击 → hurt 槽（HitReact 骨骼动画）
 
 
 func _tick_stagger(delta: float) -> void:
@@ -205,6 +210,7 @@ func _tick_stagger(delta: float) -> void:
 	if _stagger_timer > 0.0:
 		return
 	state = State.CHASE  # 硬直结束 → 回追击
+	_play_anim("walk")  # M3-ART-P1：硬直结束 → 追击 walk
 
 
 # --- 工具 ---
@@ -251,6 +257,7 @@ func _recompute_direction() -> void:
 
 func _on_died(_attacker: Node) -> void:
 	state = State.DEAD
+	_play_anim("death")  # M3-ART-P1：死亡 → death 槽（Death 骨骼动画）
 	super._on_died(_attacker)
 
 

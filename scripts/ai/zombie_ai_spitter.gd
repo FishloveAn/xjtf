@@ -92,6 +92,7 @@ func _tick_idle() -> void:
 	if target != null and _body.global_position.distance_to(target.global_position) <= _sight_range:
 		_target = target
 		state = State.CHASE
+		_play_anim("walk")  # M3-ART-P1：追击 → walk 槽
 
 
 func _tick_chase(delta: float) -> void:
@@ -129,6 +130,7 @@ func _start_spit_windup() -> void:
 	_face_target()  # 前摇站定，锁定朝向
 	_play_sfx("spit_windup")  # 音效钩子（S7 接素材，缺失静默跳过）
 	_pulse_visual()  # 前摇表现：视觉放大脉冲（基元占位）
+	_play_anim("attack")  # M3-ART-P1：吐酸前摇 → attack 槽（Ribcage 无攻击动画，attack 槽已复用 Idle 站定姿态）
 
 
 func _tick_spit_windup(delta: float) -> void:
@@ -140,11 +142,13 @@ func _tick_spit_windup(delta: float) -> void:
 	if _target == null or not _target_alive():
 		_reset_visual()
 		state = State.CHASE
+		_play_anim("walk")  # M3-ART-P1：取消吐酸 → 追击 walk
 		return
 	_spit()
 	_spit_cooldown = _cooldown_s  # 吐完进入冷却（数据驱动），期间维持距离拉扯
 	_reset_visual()
 	state = State.CHASE
+	_play_anim("walk")  # M3-ART-P1：吐酸完 → 追击 walk
 
 
 ## 吐酸：目标当前位置 + 水平移动速度 × 提前量 → 预测落点生成酸液区（直线落地，无弹道投射物）
@@ -228,6 +232,7 @@ func _recompute_move_dir(dist: float) -> void:
 
 func _on_died(_attacker: Node) -> void:
 	state = State.DEAD
+	_play_anim("death")  # M3-ART-P1：死亡 → death 槽（Death 骨骼动画）
 	super._on_died(_attacker)
 
 
