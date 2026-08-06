@@ -1,7 +1,7 @@
 ## wave_manager.gd — 波次状态机（M2-S1 + S2 Director 压力 + S3a 对象池刷怪）
 ## 职责：装载 waves.json；服务器权威推进 Setup→WaveActive→WaveCleared→Intermission→(下一波)Setup→通关；
 ##       刷怪走 ZombiePool 对象池（128 只隐藏复用，防运行时反复 instantiate/free 卡顿）；wave_* 事件 authority 广播
-##       普通丧尸 composition 走池；特感（charger）独立实例化，Director 时机 + 同屏 cap ≤5（M3-S2）
+##       普通丧尸 composition 走池；特感（charger/spitter）独立实例化，Director 时机 + 共享同屏 cap ≤5（M3-S2/S3）
 ## 输入：waves.json；S2：trickle 刷怪计时由子节点 Director（director.gd）按压力缩放；输出：向 Zombies 出池（M1 手动 add_child）
 ## 谁调用：main.tscn 的 Gameplay/WaveManager；HUD 订阅 event_* 信号只读展示
 ## 规范：tech-plan §7.2/§5.5；4.7 铁律（get_gravity().y、禁 Vector 字段复合赋值）；单文件 ≤300 行；调试键 N=跳波/Enter=重开
@@ -20,6 +20,7 @@ const BURST_BATCH_INTERVAL := 0.15   # 秒，burst 批次间隔
 const SPAWN_RADIUS := 3.0            # 米，刷怪点随机偏移半径
 const SPECIAL_RELEASE_TIMEOUT := 10.0 # 秒，composition 特感等待 Director 时机超时兜底（防低压力卡关）
 const CHARGER_SCENE_PATH := "res://scenes/enemies/zombie_charger.tscn"
+const SPITTER_SCENE_PATH := "res://scenes/enemies/zombie_spitter.tscn"  # M3-S3 喷吐者
 
 ## 波次事件信号（HUD 等订阅，只读展示；由服务器 authority 广播触发）
 signal event_wave_started(wave_index: int, wave_name: String, countdown: float)
@@ -36,12 +37,15 @@ var _current_wave: Dictionary = {}
 var _spawned_count := 0
 var _killed_count := 0
 var _concurrent_count := 0
-## 特感刷怪计数（M3-S2）：composition 按类型拆分配额，common 走池、charger 独立实例化
+## 特感刷怪计数（M3-S2/S3）：composition 按类型拆分配额，common 走池、charger/spitter 独立
+## 实例化；_active_specials 为两种特感共享的同屏计数（cap ≤5，tech-plan §10）
 var _spawned_commons := 0
 var _spawned_chargers := 0
+var _spawned_spitters := 0
 var _active_specials := 0
 var _special_pending_timer := 0.0
 var _charger_scene: PackedScene = null
+var _spitter_scene: PackedScene = null
 var _spawn_timer := 0.0
 var _setup_timer := 0.0
 var _cleared_timer := 0.0
@@ -64,8 +68,9 @@ func _ready() -> void:
 		_pool.name = "ZombiePool"
 		add_child(_pool)
 		_pool.setup(_zombies)
-		# M3-S2：特感场景延迟 load（不池化，死亡 queue_free，风险备注 6）
+		# M3-S2/S3：特感场景延迟 load（不池化，死亡 queue_free，风险备注 6）
 		_charger_scene = load(CHARGER_SCENE_PATH) as PackedScene
+		_spitter_scene = load(SPITTER_SCENE_PATH) as PackedScene
 	call_deferred("_start")
 
 
@@ -123,6 +128,7 @@ func _begin_wave(wave_index: int) -> void:
 	_concurrent_count = 0
 	_spawned_commons = 0
 	_spawned_chargers = 0
+	_spawned_spitters = 0
 	_active_specials = 0
 	_special_pending_timer = 0.0
 	_spawn_timer = 0.0
@@ -147,7 +153,8 @@ func _tick_wave_active(delta: float) -> void:
 	if _all_spawned():
 		return  # 全刷出后等杀光（清波判定在 _on_zombie_died）
 	# composition 有特感待刷 → 累计等待 Director 时机（压力阈值/冷却），超时兜底放行防卡关
-	if int(_current_wave.get("composition", {}).get("charger", 0)) > _spawned_chargers:
+	var comp: Dictionary = _current_wave.get("composition", {})
+	if int(comp.get("charger", 0)) > _spawned_chargers or int(comp.get("spitter", 0)) > _spawned_spitters:
 		_special_pending_timer += delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0:
@@ -197,26 +204,31 @@ func _enter_victory() -> void:
 
 # --- 刷怪（M2-S3a：普通丧尸走对象池；M3-S2：特感独立实例化，tech-plan §5.5） ---
 
-## 刷怪分发：按 composition 剩余配额取类型（charger 受 Director 时机 + 同屏 cap 约束）
+## 刷怪分发：按 composition 剩余配额取类型（特感受 Director 时机 + 共享同屏 cap 约束）
 func _spawn_one_zombie() -> void:
 	var ztype := _next_spawn_type()
 	if ztype == "charger":
 		_spawn_one_charger()
+	elif ztype == "spitter":
+		_spawn_one_spitter()
 	elif ztype == "common":
 		_spawn_one_common()
 
 
 func _next_spawn_type() -> String:
 	var comp: Dictionary = _current_wave.get("composition", {})
-	if int(comp.get("charger", 0)) > _spawned_chargers and _can_spawn_charger():
+	if int(comp.get("charger", 0)) > _spawned_chargers and _can_spawn_special():
 		return "charger"
+	if int(comp.get("spitter", 0)) > _spawned_spitters and _can_spawn_special():
+		return "spitter"
 	if int(comp.get("common", 0)) > _spawned_commons:
 		return "common"
 	return ""
 
 
-## Director 特感时机：pressure ≥ 阈值 + 冷却已过才放行；等待超时兜底（防低压力卡关）
-func _can_spawn_charger() -> bool:
+## Director 特感时机：pressure ≥ 阈值 + 冷却已过才放行；等待超时兜底（防低压力卡关）。
+## 冲撞者/喷吐者共享同一时机与同屏 cap（特感总量 ≤5，tech-plan §10）
+func _can_spawn_special() -> bool:
 	if _active_specials >= _special_cap():
 		return false
 	if _special_pending_timer >= SPECIAL_RELEASE_TIMEOUT:
@@ -270,6 +282,34 @@ func _spawn_one_charger() -> void:
 
 
 func _on_charger_died(_attacker: Node, _charger: Node) -> void:
+	_killed_count += 1
+	_concurrent_count = maxi(_concurrent_count - 1, 0)
+	_active_specials = maxi(_active_specials - 1, 0)
+	_check_wave_cleared()
+
+
+## 喷吐者刷出：独立实例化（特感 ≤5 不池化，死亡 queue_free，风险备注 6）
+func _spawn_one_spitter() -> void:
+	if _spitter_scene == null:
+		push_warning("[WaveManager] 无法装载 zombie_spitter.tscn，跳过特感")
+		return
+	var spitter: Node3D = _spitter_scene.instantiate()
+	spitter.name = "Spitter"
+	spitter.set_multiplayer_authority(NetworkManager.SERVER_ID)
+	_zombies.add_child(spitter, true)  # 强制可读名（MultiplayerSpawner 复制要求，M2-S5）
+	spitter.global_position = _random_spawn_position()
+	_spawned_spitters += 1
+	_spawned_count += 1
+	_concurrent_count += 1
+	_active_specials += 1  # 与冲撞者共享同屏计数（cap ≤5）
+	if _director != null:
+		_director.mark_special_spawned()  # 推进 Director 特感冷却
+	var health := spitter.get_node_or_null("Health") as Damageable
+	if health != null and not health.died.is_connected(_on_spitter_died.bind(spitter)):
+		health.died.connect(_on_spitter_died.bind(spitter))
+
+
+func _on_spitter_died(_attacker: Node, _spitter: Node) -> void:
 	_killed_count += 1
 	_concurrent_count = maxi(_concurrent_count - 1, 0)
 	_active_specials = maxi(_active_specials - 1, 0)

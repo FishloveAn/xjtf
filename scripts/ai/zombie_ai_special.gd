@@ -1,7 +1,8 @@
-## zombie_ai_special.gd — 特感 AI 基类（M3-S2；tech-plan §3.4/§5.4，冲撞者/喷吐者共用）
-## 职责：特感公共基础设施——data/zombies.json 数据驱动加载（静态缓存、改 JSON 重启生效）、
-##       服务器权威 transform 同步（SpecialSync）、死亡链路（Died→authority 广播→血雾/淡出→
-##       queue_free 清理，特感 ≤5 不池化）、玩家检索（DEAD 玩家不作目标）、简化导航朝向、音效钩子
+## zombie_ai_special.gd — 特感 AI 基类（M3-S2/S3；tech-plan §3.4/§5.4，冲撞者/喷吐者共用）
+## 职责：特感公共基础设施——data/zombies.json 数据驱动加载（静态缓存 id→条目、改 JSON 重启
+##       生效，_params 为实例级：多特感类型共存互不覆盖）、服务器权威 transform 同步
+##       （SpecialSync）、死亡链路（Died→authority 广播→血雾/淡出→queue_free 清理，特感 ≤5
+##       不池化）、玩家检索（DEAD 玩家不作目标）、简化导航朝向、音效钩子
 ## 输入：子类 _ready() 调 super._ready() 完成初始化；Health.died 信号 → _on_died
 ## 输出：父节点 CharacterBody3D 位移/朝向由子类状态机驱动（_physics_process）
 ## 谁调用：仅服务器执行（子类 _physics_process 判 is_server）；客户端纯显示
@@ -22,9 +23,11 @@ var _visual: Node3D = null
 var _die_clear_s := 2.5
 var _visual_tween: Tween = null     # 前摇/死亡表现 tween，跨状态切换必须 kill
 
-## 特感条目参数缓存（静态：JSON 只读一次，多实例共享；改 JSON 重启生效）
+## 特感条目参数缓存（静态：JSON 只读一次，按 id 索引多条目，多实例共享；改 JSON 重启生效）
 static var _params_loaded := false
-static var _params: Dictionary = {}
+static var _all_params: Dictionary = {}   # id → 条目（charger/spitter 各一份）
+## 本实例条目参数（实例级：静态缓存仅按 id 索引，跨类型实例各取各的，不互相覆盖）
+var _params: Dictionary = {}
 
 
 func _ready() -> void:
@@ -64,9 +67,9 @@ func _load_params() -> void:
 			var parsed = JSON.parse_string(file.get_as_text())
 			if parsed is Dictionary:
 				for z in parsed.get("zombies", []):
-					if z is Dictionary and z.get("id", "") == _params_id():
-						_params = z
-						break
+					if z is Dictionary and not String(z.get("id", "")).is_empty():
+						_all_params[z.get("id")] = z
+	_params = _all_params.get(_params_id(), {})  # 实例级：按类型取各自条目
 	var hp: float = float(_params.get("hp", 100.0))
 	var health := get_node_or_null("../Health") as ZombieHealth
 	if health != null:

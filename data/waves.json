@@ -25,7 +25,7 @@
     {
       "id": "wave_03",
       "name": "潮涌",
-      "composition": { "common": 30, "charger": 1 },
+      "composition": { "common": 30, "charger": 1, "spitter": 1 },
       "concurrent_cap": 30,
       "spawn_style": "burst",
       "spawn_interval": 1.2,

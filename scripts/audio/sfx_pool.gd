@@ -27,6 +27,10 @@ const EVENT_MAP := {
 	"charge_windup": "res://assets/audio/sfx/sfx_charge_windup_01.ogg",
 	"charger_hit": "res://assets/audio/sfx/sfx_charger_hit_01.ogg",
 	"charger_death": "res://assets/audio/sfx/sfx_charger_death_01.ogg",
+	# M3-S3 喷吐者：吐酸前摇 / 酸液落地（素材未到静默跳过，M1-S7 容错）
+	"spit_windup": "res://assets/audio/sfx/sfx_spit_windup_01.ogg",
+	"acid_land": "res://assets/audio/sfx/sfx_acid_land_01.ogg",
+	"spitter_death": "res://assets/audio/sfx/sfx_spitter_death_01.ogg",
 }
 
 var _pool: Array[AudioStreamPlayer3D] = []

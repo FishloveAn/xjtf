@@ -16,6 +16,7 @@ const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 ## 复制的玩家/丧尸/补给点在客户端无法创建（表现为客户端看不到任何玩家/丧尸）
 const ZOMBIE_SCENE_PATH := "res://scenes/enemies/zombie_common.tscn"
 const CHARGER_SCENE_PATH := "res://scenes/enemies/zombie_charger.tscn"  # M3-S2 特感复制
+const SPITTER_SCENE_PATH := "res://scenes/enemies/zombie_spitter.tscn"  # M3-S3 喷吐者复制
 const SUPPLY_SCENE_PATH := "res://scenes/environment/supply_point.tscn"
 
 ## 主机给客户端留的切场景宽限（秒）：避免生成包先于客户端主场景到达而被丢弃
@@ -39,6 +40,7 @@ func _ready() -> void:
 	_player_spawner.add_spawnable_scene("res://scenes/player/player.tscn")
 	_zombie_spawner.add_spawnable_scene(ZOMBIE_SCENE_PATH)
 	_zombie_spawner.add_spawnable_scene(CHARGER_SCENE_PATH)  # M3-S2 特感走同一 Spawner 复制
+	_zombie_spawner.add_spawnable_scene(SPITTER_SCENE_PATH)  # M3-S3 喷吐者走同一 Spawner 复制
 	_pickup_spawner.add_spawnable_scene(SUPPLY_SCENE_PATH)
 
 	if not NetworkManager.is_network_active():
