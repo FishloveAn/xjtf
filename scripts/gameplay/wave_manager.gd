@@ -44,8 +44,7 @@ var level_mode := false
 var spawn_point_group := "spawn_point"
 
 var _waves: Array = []
-## 关卡波次配置（waves.json level_waves 数组，S5：触发式波次，见 LevelAdvance）
-var _level_waves: Array = []
+var _catalog := WaveDefinitionCatalog.new()
 var _current_wave: Dictionary = {}
 var _current_wave_id := ""
 var _spawned_count := 0
@@ -126,19 +125,10 @@ func _start() -> void:
 
 
 func _load_waves() -> bool:
-	var file := FileAccess.open(WAVES_JSON_PATH, FileAccess.READ)
-	if file == null:
+	if not _catalog.load_from_path(WAVES_JSON_PATH):
 		return false
-	var parsed = JSON.parse_string(file.get_as_text())
-	if not (parsed is Dictionary):
-		return false
-	var waves = parsed.get("waves", [])
-	if not (waves is Array) or waves.is_empty():
-		return false
-	_waves = waves
-	# S5：关卡触发式波次独立数组（竞技场 waves 保持 3 波推进不受影响）
-	var level_waves = parsed.get("level_waves", [])
-	_level_waves = level_waves if level_waves is Array else []
+	# 保留数组供现有调试加压脚本覆盖指定波次；正式查询统一走目录并返回深拷贝。
+	_waves = _catalog.arena_waves()
 	return true
 
 
@@ -177,13 +167,12 @@ func start_wave_config(cfg: Dictionary) -> bool:
 
 ## 关卡波次配置查找（S5，LevelAdvance 调用）：优先 level_waves，回退竞技场 waves
 func get_level_wave_config(wave_id: String) -> Dictionary:
-	for w in _level_waves:
-		if String(w.get("id", "")) == wave_id:
-			return w
-	for w in _waves:
-		if String(w.get("id", "")) == wave_id:
-			return w
-	return {}
+	return _catalog.find_level(wave_id)
+
+
+## 统一波次查询：支持竞技场与推进波次，返回深拷贝，调用方修改不会污染目录。
+func get_wave_config(wave_id: String) -> Dictionary:
+	return _catalog.find(wave_id)
 
 
 ## 波次计数器统一复位（_begin_wave 与 start_wave_config 共用）
@@ -398,11 +387,7 @@ func _check_wave_cleared() -> void:
 
 
 func _wave_total_count() -> int:
-	var total := 0
-	var comp: Dictionary = _current_wave.get("composition", {})
-	for key in comp:
-		total += int(comp[key])
-	return total
+	return _catalog.composition_total(_current_wave)
 
 
 func _all_spawned() -> bool:
