@@ -25,6 +25,7 @@ const SPAWN_RADIUS := 3.0            # 米，刷怪点随机偏移半径
 const SPECIAL_RELEASE_TIMEOUT := 10.0 # 秒，composition 特感等待 Director 时机超时兜底（防低压力卡关）
 const CHARGER_SCENE_PATH := "res://scenes/enemies/zombie_charger.tscn"
 const SPITTER_SCENE_PATH := "res://scenes/enemies/zombie_spitter.tscn"  # M3-S3 喷吐者
+const SpawnLedger := preload("res://scripts/gameplay/wave_spawn_ledger.gd")
 
 ## 波次事件信号（HUD 等订阅，只读展示；由服务器 authority 广播触发）
 signal event_wave_started(wave_index: int, wave_name: String, countdown: float)
@@ -47,6 +48,7 @@ var _waves: Array = []
 var _catalog := WaveDefinitionCatalog.new()
 var _current_wave: Dictionary = {}
 var _current_wave_id := ""
+# 兼容 Director 与现有压力工具的只读镜像；真实运行记账由 _spawn_ledger 维护。
 var _spawned_count := 0
 var _killed_count := 0
 var _concurrent_count := 0
@@ -56,6 +58,7 @@ var _spawned_commons := 0
 var _spawned_chargers := 0
 var _spawned_spitters := 0
 var _active_specials := 0
+var _spawn_ledger := SpawnLedger.new()
 var _special_pending_timer := 0.0
 var _charger_scene: PackedScene = null
 var _spitter_scene: PackedScene = null
@@ -177,15 +180,21 @@ func get_wave_config(wave_id: String) -> Dictionary:
 
 ## 波次计数器统一复位（_begin_wave 与 start_wave_config 共用）
 func _reset_wave_state() -> void:
-	_spawned_count = 0
-	_killed_count = 0
-	_concurrent_count = 0
-	_spawned_commons = 0
-	_spawned_chargers = 0
-	_spawned_spitters = 0
-	_active_specials = 0
+	var composition: Dictionary = _current_wave.get("composition", {})
+	_spawn_ledger.reset(composition)
+	_sync_spawn_counters()
 	_special_pending_timer = 0.0
 	_spawn_timer = 0.0
+
+
+func _sync_spawn_counters() -> void:
+	_spawned_count = _spawn_ledger.spawned_count()
+	_killed_count = _spawn_ledger.killed_count()
+	_concurrent_count = _spawn_ledger.concurrent_count()
+	_spawned_commons = _spawn_ledger.spawned_type(&"common")
+	_spawned_chargers = _spawn_ledger.spawned_type(&"charger")
+	_spawned_spitters = _spawn_ledger.spawned_type(&"spitter")
+	_active_specials = _spawn_ledger.active_special_count()
 
 
 func _enter_level_wait() -> void:
@@ -274,14 +283,7 @@ func _spawn_one_zombie() -> void:
 
 
 func _next_spawn_type() -> String:
-	var comp: Dictionary = _current_wave.get("composition", {})
-	if int(comp.get("charger", 0)) > _spawned_chargers and _can_spawn_special():
-		return "charger"
-	if int(comp.get("spitter", 0)) > _spawned_spitters and _can_spawn_special():
-		return "spitter"
-	if int(comp.get("common", 0)) > _spawned_commons:
-		return "common"
-	return ""
+	return String(_spawn_ledger.next_spawn_type(_can_spawn_special(), _special_cap()))
 
 
 ## Director 特感时机：pressure ≥ 阈值 + 冷却已过才放行；等待超时兜底（防低压力卡关）。
@@ -309,9 +311,8 @@ func _spawn_one_common() -> void:
 	if zombie == null:
 		push_warning("[WaveManager] 对象池耗尽/超同屏上限，跳过本只")
 		return
-	_spawned_commons += 1
-	_spawned_count += 1
-	_concurrent_count += 1
+	_spawn_ledger.record_spawned(&"common")
+	_sync_spawn_counters()
 	# 池化复用同一节点：died 只连一次（is_connected 判重防重复计数/重复回池）
 	var health := zombie.get_node_or_null("Health") as Damageable
 	if health != null and not health.died.is_connected(_on_zombie_died.bind(zombie)):
@@ -328,10 +329,8 @@ func _spawn_one_charger() -> void:
 	charger.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_zombies.add_child(charger, true)  # 强制可读名（MultiplayerSpawner 复制要求，M2-S5）
 	charger.global_position = _random_spawn_position()
-	_spawned_chargers += 1
-	_spawned_count += 1
-	_concurrent_count += 1
-	_active_specials += 1
+	_spawn_ledger.record_spawned(&"charger")
+	_sync_spawn_counters()
 	if _director != null:
 		_director.mark_special_spawned()  # 推进 Director 特感冷却
 	var health := charger.get_node_or_null("Health") as Damageable
@@ -340,9 +339,8 @@ func _spawn_one_charger() -> void:
 
 
 func _on_charger_died(_attacker: Node, _charger: Node) -> void:
-	_killed_count += 1
-	_concurrent_count = maxi(_concurrent_count - 1, 0)
-	_active_specials = maxi(_active_specials - 1, 0)
+	_spawn_ledger.record_killed(&"charger")
+	_sync_spawn_counters()
 	_check_wave_cleared()
 
 
@@ -356,10 +354,8 @@ func _spawn_one_spitter() -> void:
 	spitter.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_zombies.add_child(spitter, true)  # 强制可读名（MultiplayerSpawner 复制要求，M2-S5）
 	spitter.global_position = _random_spawn_position()
-	_spawned_spitters += 1
-	_spawned_count += 1
-	_concurrent_count += 1
-	_active_specials += 1  # 与冲撞者共享同屏计数（cap ≤5）
+	_spawn_ledger.record_spawned(&"spitter")
+	_sync_spawn_counters()
 	if _director != null:
 		_director.mark_special_spawned()  # 推进 Director 特感冷却
 	var health := spitter.get_node_or_null("Health") as Damageable
@@ -368,30 +364,28 @@ func _spawn_one_spitter() -> void:
 
 
 func _on_spitter_died(_attacker: Node, _spitter: Node) -> void:
-	_killed_count += 1
-	_concurrent_count = maxi(_concurrent_count - 1, 0)
-	_active_specials = maxi(_active_specials - 1, 0)
+	_spawn_ledger.record_killed(&"spitter")
+	_sync_spawn_counters()
 	_check_wave_cleared()
 
 
 func _on_zombie_died(_attacker: Node, _zombie: Node) -> void:
-	_killed_count += 1
-	_concurrent_count = maxi(_concurrent_count - 1, 0)
+	_spawn_ledger.record_killed(&"common")
+	_sync_spawn_counters()
 	_check_wave_cleared()
 
 
 func _check_wave_cleared() -> void:
-	var total := _wave_total_count()  # cleared_when M2 统一 all_spawned_killed
-	if _spawned_count >= total and _killed_count >= total:
+	if _spawn_ledger.is_cleared():
 		_enter_wave_cleared()
 
 
 func _wave_total_count() -> int:
-	return _catalog.composition_total(_current_wave)
+	return _spawn_ledger.total_count()
 
 
 func _all_spawned() -> bool:
-	return _spawned_count >= _wave_total_count()
+	return _spawn_ledger.all_spawned()
 
 
 func _concurrent_cap() -> int:

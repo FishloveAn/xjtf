@@ -307,13 +307,16 @@ func _start_death_cleanup() -> void:
 	_cleanup_tween.tween_callback(_free_zombie)
 
 
-## 死亡清理回调：服务器回池复用；客户端/无池兜底 queue_free（不引 ZombiePool 类型防加载环）
+## 死亡清理回调：服务器回池复用；联网客户端等待服务器 Spawner despawn；
+## 单机且无池的独立测试场景才本地 queue_free（不引 ZombiePool 类型防加载环）。
 func _free_zombie() -> void:
 	if not is_instance_valid(_body):
 		return
 	var pool := get_tree().get_first_node_in_group("zombie_pool")
 	if pool != null:
 		pool.call("despawn_to_pool", _body)
+	elif NetworkManager.is_network_active() and not NetworkManager.is_server():
+		return
 	else:
 		_body.queue_free()
 

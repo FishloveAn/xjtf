@@ -44,14 +44,6 @@ func find_level(wave_id: String) -> Dictionary:
 	return find(wave_id)
 
 
-func composition_total(config: Dictionary) -> int:
-	var total := 0
-	var composition: Dictionary = config.get("composition", {})
-	for amount in composition.values():
-		total += int(amount)
-	return total
-
-
 func _find_in(waves: Array, wave_id: String) -> Dictionary:
 	for entry in waves:
 		if entry is Dictionary and String(entry.get("id", "")) == wave_id:
