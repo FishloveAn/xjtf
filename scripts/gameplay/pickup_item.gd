@@ -77,6 +77,7 @@ func request_pickup() -> void:
 		return  # 距离校验（服务器复验，防远程作弊）
 	used = true
 	_grant(player)
+	_broadcast_pickup_sound()  # 拾取音（3D 世界声，全端可听；按类型播 pickup_ammo/pickup_health）
 	queue_free()  # 服务器销毁 → MultiplayerSpawner 同步各端消失（单机即本地消失）
 
 
@@ -98,6 +99,21 @@ func _grant(player: Node3D) -> void:
 
 
 # --- 工具 ---
+
+## [authority] 服务器→所有人：拾取音（掉落物消失走 Spawner 无 authority 广播，故单独 RPC）
+@rpc("authority", "call_local", "reliable")
+func pickup_sound() -> void:
+	var event := "pickup_health" if pickup_type == Type.HEALTH else "pickup_ammo"
+	SfxPool.play_3d(event, global_position)
+
+
+## 广播拾取音：单机（无 peer）直接本地执行；多人走 authority RPC（call_local 覆盖主机视角）
+func _broadcast_pickup_sound() -> void:
+	if NetworkManager.is_network_active():
+		pickup_sound.rpc()
+	else:
+		pickup_sound()
+
 
 func _find_player_by_peer(peer_id: int) -> Node3D:
 	for p in get_tree().get_nodes_in_group("players"):

@@ -108,7 +108,8 @@ func _tick_chase(delta: float) -> void:
 	if _spit_cooldown > 0.0:
 		_spit_cooldown = maxf(_spit_cooldown - delta, 0.0)
 	# 射程内 + 冷却就绪 + 目标存活 → 站定前摇吐酸（优先级最高）
-	if _spit_cooldown <= 0.0 and dist >= _spit_min_range and dist <= _spit_range and _target_alive():
+	if _spit_cooldown <= 0.0 and dist >= _spit_min_range and dist <= _spit_range \
+			and _target_alive() and _has_world_line_to(_target):
 		_start_spit_windup()
 		return
 	# 中距离拉扯：被近身后退 / 过远前压 / 靠近 keep_distance 微调；始终朝向目标
@@ -209,7 +210,7 @@ func _face_target() -> void:
 	_body.rotation.y = atan2(-to_unit.x, -to_unit.z)
 
 
-## 每 1s 重算一次位移方向（简化导航：直线推进，不寻路）。距离策略决定进退
+## 每 1s 重算一次位移方向。距离策略仍决定进退，NavMesh 只负责抵达该策略选定的位置。
 func _recompute_move_dir(dist: float) -> void:
 	if _target == null:
 		return
@@ -218,14 +219,14 @@ func _recompute_move_dir(dist: float) -> void:
 	if to.length_squared() < 0.0001:
 		return
 	var to_unit := to.normalized()
-	if dist < _spit_min_range:
-		_move_dir = -to_unit          # 被近身 → 后退拉开距离
-	elif dist > _spit_range:
-		_move_dir = to_unit           # 超出射程 → 前压
-	elif dist > _keep_distance:
-		_move_dir = -to_unit          # 略近于保持距离 → 微退
+	var destination := _target.global_position
+	if not _has_world_line_to(_target) or dist > _spit_range:
+		destination = _target.global_position  # 遮挡或过远：沿路径前压到有效吐酸位置
+	elif dist < _spit_min_range or dist > _keep_distance:
+		destination = _body.global_position - to_unit * 4.0  # 保留原后退分支
 	else:
-		_move_dir = to_unit           # 略远于保持距离 → 微进
+		destination = _body.global_position + to_unit * 4.0  # 保留原微进分支
+	_move_dir = _navigation_direction(destination, 0.5)
 
 
 # --- 死亡（基类处理死亡表现/清理；本类补 state=DEAD） ---

@@ -37,6 +37,7 @@ var _wm: WaveManager = null
 var _trigger_areas: Dictionary = {}  # trigger_id -> AreaTrigger
 var _safe_doors: Array[Door] = []
 var _horde_triggered := false    # 第一波（通道中段）已触发
+var _horde_cleared := false
 var _horde_pending := false      # 触发被上一波占用，清波后补触发
 var _holdout_triggered := false  # 守点高潮已触发
 var _holdout_pending := false
@@ -46,6 +47,7 @@ var _yard_elapsed := 0.0
 var _harass_roll := HARASS_ROLL_S
 var _segment_start_time := 0.0
 var _fail_check := 0.0
+var _checkpoint_segment_completed := false
 
 
 func _ready() -> void:
@@ -70,7 +72,8 @@ func _ready() -> void:
 		if door != null:
 			_safe_doors.append(door)
 	_segment_start_time = Time.get_ticks_msec() / 1000.0
-	_broadcast_phase()
+	# 初始阶段各端场景默认均为 SAFE_ROOM，无需在切场景竞态窗口发送 RPC。
+	# 后续真实阶段变化仍统一由 _set_phase 广播。
 
 
 func _process(delta: float) -> void:
@@ -104,16 +107,19 @@ func _handle_trigger(trigger_id: String) -> void:
 				_open_doors()
 				_set_phase(Phase.YARD)
 				print("[LevelAdvance] 安全屋门开启，进入货场（搜刮区）")
+				_save_checkpoint()
 		"corridor_enter":
 			if phase == Phase.YARD:
 				_set_phase(Phase.CORRIDOR)
 				print("[LevelAdvance] 进入货运通道（警戒区）")
+				_save_checkpoint()
 		"corridor_mid":
 			if not _horde_triggered and phase >= Phase.CORRIDOR:
 				_horde_triggered = true
 				if not _trigger_level_wave("level_horde_01"):
 					_horde_pending = true  # 上一波（骚扰潮）未清 → 清波后补触发
 				print("[LevelAdvance] 通道中段：第一波尸潮触发")
+				_save_checkpoint()
 		"plaza_enter":
 			if not _holdout_triggered and phase >= Phase.CORRIDOR:
 				_holdout_triggered = true
@@ -122,18 +128,23 @@ func _handle_trigger(trigger_id: String) -> void:
 					_holdout_pending = true
 				event_holdout_triggered.emit()
 				print("[LevelAdvance] 装卸广场：守点高潮触发")
+				_save_checkpoint()
 		"backdoor_enter":
 			if _holdout_cleared and phase < Phase.BACKDOOR:
 				_complete_segment()
 
 
 func _on_level_wave_cleared(wave_id: String) -> void:
+	if _wm == null or not _wm.level_mode:
+		return
 	if wave_id == "level_harass":
 		_harass_done = true
 	if wave_id == "level_holdout":
 		_holdout_cleared = true
 		print("[LevelAdvance] 守点高潮清除，后门安全屋开启")
 		_toast("尸潮清除，后门安全屋开启！")
+	if wave_id == "level_horde_01":
+		_horde_cleared = true
 	# 补触发挂起的高潮（玩家推进快于波次清空时）
 	if _horde_pending:
 		_horde_pending = false
@@ -141,6 +152,7 @@ func _on_level_wave_cleared(wave_id: String) -> void:
 	elif _holdout_pending:
 		_holdout_pending = false
 		_trigger_level_wave("level_holdout")
+	_save_checkpoint()
 
 
 ## 触发关卡波次（复用 WaveManager 刷怪；区域触发=手动启动波次，tech-plan §7.2）
@@ -181,11 +193,84 @@ func _complete_segment() -> void:
 	var elapsed := Time.get_ticks_msec() / 1000.0 - _segment_start_time
 	# S6：结算统计（击杀/救援/倒地/段落用时）→ 广播计分板全端展示；击杀数写入存档 best_score
 	GameState.finish_segment(elapsed)
-	CheckpointManager.save_progress(1, elapsed, GameState.kills_common + GameState.kills_special)
+	var equipment := CheckpointManager.capture_equipment(_get_host_player())
+	_checkpoint_segment_completed = true
+	_save_checkpoint(true, elapsed, equipment)
 	event_level_complete.emit(1)
 	print("[LevelAdvance] 到达后门安全屋：回血/补给 + 已存档（段落用时 %.1fs）" % elapsed)
 	_toast("段落完成！已存档，按 Enter 重开 / Esc 回主菜单")
 	_set_phase(Phase.COMPLETE)
+
+
+## 恢复稳定边界；不恢复旧怪物/弹道，必要波次会从头干净重启。
+func restore_checkpoint(progress: Dictionary) -> bool:
+	if int(progress.get("segment", 0)) <= 0:
+		return false
+	var target_phase := clampi(int(progress.get("level_phase", Phase.SAFE_ROOM)), Phase.SAFE_ROOM, Phase.COMPLETE)
+	if target_phase >= Phase.YARD:
+		_open_doors()
+	var flags: Dictionary = progress.get("level_flags", {})
+	if flags.is_empty():
+		_horde_triggered = target_phase >= Phase.PLAZA
+		_horde_cleared = target_phase >= Phase.PLAZA
+		_holdout_triggered = target_phase >= Phase.PLAZA
+		_holdout_cleared = target_phase >= Phase.BACKDOOR
+	else:
+		_horde_triggered = bool(flags.get("horde_triggered", false))
+		_horde_cleared = bool(flags.get("horde_cleared", false))
+		_holdout_triggered = bool(flags.get("holdout_triggered", false))
+		_holdout_cleared = bool(flags.get("holdout_cleared", false))
+		_harass_done = bool(flags.get("harass_done", false))
+	_checkpoint_segment_completed = bool(progress.get("completed", false))
+	if target_phase >= Phase.BACKDOOR:
+		_horde_cleared = true
+		_holdout_cleared = true
+	_set_phase(target_phase)
+	if target_phase == Phase.COMPLETE:
+		event_level_complete.emit(int(progress.get("segment", 1)))
+	elif _checkpoint_segment_completed and target_phase == Phase.BACKDOOR:
+		event_level_complete.emit(int(progress.get("segment", 1)))
+		_toast("段落已完成，当前位于后门休整区；按 Enter 重开 / Esc 回主菜单")
+	else:
+		_resume_required_wave.call_deferred()
+	return true
+
+
+func _resume_required_wave() -> void:
+	if _horde_triggered and not _horde_cleared:
+		_holdout_pending = _holdout_triggered and not _holdout_cleared
+		_trigger_level_wave("level_horde_01")
+	elif _holdout_triggered and not _holdout_cleared:
+		_trigger_level_wave("level_holdout")
+
+
+func _save_checkpoint(
+	segment_completed: bool = false,
+	elapsed_override: float = -1.0,
+	equipment_override: Dictionary = {},
+) -> void:
+	if not NetworkManager.is_server():
+		return
+	var player := _get_host_player() as Node3D
+	if player == null:
+		return
+	var elapsed := elapsed_override
+	if elapsed < 0.0:
+		elapsed = Time.get_ticks_msec() / 1000.0 - _segment_start_time
+	var equipment := equipment_override
+	if equipment.is_empty():
+		equipment = CheckpointManager.capture_equipment(player)
+	CheckpointManager.save_progress(
+		1, elapsed, GameState.kills_common + GameState.kills_special,
+		equipment, phase, GameState.checkpoint_path,
+		CheckpointManager.capture_player_state(player), {
+			"horde_triggered": _horde_triggered,
+			"horde_cleared": _horde_cleared,
+			"holdout_triggered": _holdout_triggered,
+			"holdout_cleared": _holdout_cleared,
+			"harass_done": _harass_done,
+		}, segment_completed,
+	)
 
 
 ## 后门安全屋休整：全员满血 + 四把武器弹匣补满（服务器权威结算，HealthSync/WeaponSync 自动广播）
@@ -215,6 +300,13 @@ func _check_all_dead() -> void:
 	if phase < Phase.COMPLETE and phase != Phase.SAFE_ROOM:
 		event_level_failed.emit()
 		print("[LevelAdvance] 全员阵亡，段落失败（可重试）")
+
+
+func _get_host_player() -> Node:
+	for player in get_tree().get_nodes_in_group("players"):
+		if player.get_multiplayer_authority() == NetworkManager.SERVER_ID:
+			return player
+	return null
 
 
 # --- 工具 ---
@@ -254,8 +346,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not NetworkManager.is_server() or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	# 完成态 Enter：单机重开（多人由主机退出重开房，主机权威 MVP）
-	if event.keycode == KEY_ENTER and phase == Phase.COMPLETE:
-		if not NetworkManager.is_network_active():
-			get_tree().reload_current_scene()
-		else:
+	if phase == Phase.COMPLETE or _checkpoint_segment_completed:
+		if event.keycode == KEY_ENTER:
+			if not NetworkManager.is_network_active():
+				get_tree().reload_current_scene()
+			else:
+				get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+		elif event.keycode == KEY_ESCAPE:
+			NetworkManager.disconnect_from_server()
 			get_tree().change_scene_to_file(MAIN_MENU_SCENE)

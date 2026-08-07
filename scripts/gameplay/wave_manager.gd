@@ -410,7 +410,10 @@ func _all_spawned() -> bool:
 
 
 func _concurrent_cap() -> int:
-	return int(_current_wave.get("concurrent_cap", 999))
+	var wave_cap := int(_current_wave.get("concurrent_cap", 999))
+	if _director == null:
+		return wave_cap
+	return _director.concurrent_cap(wave_cap)
 
 
 func _random_spawn_position() -> Vector3:

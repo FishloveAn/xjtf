@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "导演系统参数（M2 预制作草案，2026-08-04，待平衡；M3-S4 增 ai_budget/degrade）。字段照 tech-plan §7.3：pressure = clamp(0.4*(1-存活玩家占比) + 0.3*(1-场上丧尸/上限) + 0.3*(本波已过时间/期望时长), 0, 1)，每 update_interval_s 重算。spawn_interval = base_interval * (spawn_interval.max_scale - pressure)，结果钳制在 min_s/max_s。pressure > specials.threshold 允许刷特感（M3-S2 起启用）。ai_budget.max_ai_per_frame 为分帧 AI 预算（zombie_ai_budget.gd 读取，M3-S4：40→80 适配 100 只，实测 100 只仍 <16.7ms）。degrade 为降级开关（tech-plan §11 风险1：同屏超 max_concurrent 自动削减刷怪，M3-S4 实测 100 只达标 → 开关启用预留，实际由 waves.json concurrent_cap 约束，未触发）。数值为 L4D 类常识初值。",
+  "note": "导演系统参数（M2 预制作草案，2026-08-04，待平衡；M3-S4 增 ai_budget/degrade）。字段照 tech-plan §7.3：pressure = clamp(0.4*(1-存活玩家占比) + 0.3*(1-场上丧尸/上限) + 0.3*(本波已过时间/期望时长), 0, 1)，每 update_interval_s 重算。spawn_interval = base_interval * (spawn_interval.max_scale - pressure)，结果钳制在 min_s/max_s。pressure > specials.threshold 允许刷特感（M3-S2 起启用）。ai_budget.max_ai_per_frame 为分帧 AI 预算（zombie_ai_budget.gd 读取，M3-S4：40→80 适配 100 只，实测 100 只仍 <16.7ms）。degrade.enabled 启用时，WaveManager 将 waves.json concurrent_cap 与 degrade.max_concurrent 取较小值，限制普通怪和特感的总同屏数。数值为 L4D 类常识初值。",
   "update_interval_s": 0.5,
   "pressure_weights": {
     "player_alive": 0.4,

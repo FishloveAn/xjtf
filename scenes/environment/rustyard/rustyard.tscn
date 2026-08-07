@@ -1,4 +1,4 @@
-[gd_scene load_steps=65 format=3]
+[gd_scene load_steps=66 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/area_trigger.gd" id="1_area"]
 [ext_resource type="Script" path="res://scripts/gameplay/door.gd" id="2_door"]
@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/environment/env_hydrant_01.glb" id="15_env_hydrant"]
 [ext_resource type="PackedScene" path="res://assets/models/environment/env_barrier_01.glb" id="16_env_barrier"]
 [ext_resource type="PackedScene" path="res://assets/models/environment/env_chest_01.glb" id="17_env_chest"]
+[ext_resource type="NavigationMesh" path="res://scenes/environment/rustyard/rustyard_navigation_mesh.tres" id="18_navigation"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_ground"]
 albedo_color = Color(1, 1, 1, 1)
@@ -147,7 +148,7 @@ size = Vector3(0.2, 3, 2.8)
 size = Vector3(0.2, 3, 2.8)
 
 [sub_resource type="BoxShape3D" id="BS_trigger_2_4_3"]
-size = Vector3(2, 4, 3)
+size = Vector3(2.5, 4, 4)
 
 [sub_resource type="BoxShape3D" id="BS_trigger_3_4_4"]
 size = Vector3(3, 4, 4)
@@ -162,6 +163,9 @@ size = Vector3(3, 4, 6)
 size = Vector3(2.5, 4, 5)
 
 [node name="Rustyard" type="Node3D"]
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = ExtResource("18_navigation")
 
 [node name="Ground" type="StaticBody3D" parent="."]
 position = Vector3(11, -0.1, 0)
@@ -491,10 +495,36 @@ shape = SubResource("BS_trigger_25_4_5")
 [node name="PlayerSpawns" type="Node3D" parent="Markers"]
 
 [node name="SpawnSafeA" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -3)
+position = Vector3(-22, 0, -0.6)
+rotation_degrees = Vector3(0, -90, 0)
 
 [node name="SpawnSafeB" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 3)
+position = Vector3(-22, 0, 0.6)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeC" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-22, 0, -1.8)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeD" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-22, 0, 1.8)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeE" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-24, 0, -0.6)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeF" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-24, 0, 0.6)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeG" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-24, 0, -1.8)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SpawnSafeH" type="Marker3D" parent="Markers/PlayerSpawns" groups=["spawn_point"]]
+position = Vector3(-24, 0, 1.8)
+rotation_degrees = Vector3(0, -90, 0)
 
 [node name="HordeSpawns" type="Node3D" parent="Markers"]
 

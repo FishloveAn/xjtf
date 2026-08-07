@@ -29,6 +29,8 @@ const SPAWN_GRACE_SECONDS := 0.5
 
 ## peer_id -> 玩家节点（去重用）
 var _spawned_players: Dictionary = {}
+## 已进入主场景并完成握手的客户端；服务器等全部当前 peer 就绪后再发首批 Spawner 包。
+var _ready_peers: Dictionary = {}
 
 
 func _ready() -> void:
@@ -58,11 +60,11 @@ func _ready() -> void:
 	_player_spawner.spawn_path = _player_spawner.get_path_to(_players)
 
 	if NetworkManager.is_server():
-		# 主机：给自己留切场景宽限，再生成所有玩家
+		# 有客户端时等待全部客户端 _client_ready；否则允许主机单人开局。
+		# 提前发送 Spawner 包会被尚未切完场景的客户端丢弃。
 		await get_tree().create_timer(SPAWN_GRACE_SECONDS).timeout
-		_spawn_player(NetworkManager.SERVER_ID)
-		for peer_id in multiplayer.get_peers():
-			_spawn_player(peer_id)
+		if multiplayer.get_peers().is_empty():
+			_spawn_player(NetworkManager.SERVER_ID)
 	else:
 		# 客户端：通知服务器已进入主场景，等服务器生成自己的玩家
 		_client_ready.rpc_id(NetworkManager.SERVER_ID)
@@ -74,7 +76,13 @@ func _client_ready() -> void:
 	if not NetworkManager.is_server():
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
-	_spawn_player(sender)
+	_ready_peers[sender] = true
+	for peer_id in multiplayer.get_peers():
+		if not _ready_peers.has(peer_id):
+			return
+	_spawn_player(NetworkManager.SERVER_ID)
+	for peer_id in multiplayer.get_peers():
+		_spawn_player(peer_id)
 
 
 ## 服务器生成玩家节点（唯一入口，按 peer_id 去重）
@@ -89,10 +97,29 @@ func _spawn_player(peer_id: int) -> void:
 	player.set_multiplayer_authority(peer_id)
 	_players.add_child(player)  # MultiplayerSpawner 自动复制到所有端
 	_spawned_players[peer_id] = player
+	if peer_id == NetworkManager.SERVER_ID:
+		_restore_host_checkpoint.call_deferred(player)
+
+
+## 主机玩家 ready 后消费一次本机检查点；后加入客户端不会重复套用主机装备。
+func _restore_host_checkpoint(player: Node) -> void:
+	if not is_instance_valid(player):
+		return
+	var progress := GameState.take_checkpoint_resume(NetworkManager.SERVER_ID)
+	if progress.is_empty():
+		return
+	CheckpointManager.apply_equipment(player, progress.get("equipment", {}))
+	# 等待导航服务器同步新场景地图，再校验并恢复到可行走位置。
+	await get_tree().physics_frame
+	CheckpointManager.apply_player_state(player as Node3D, progress.get("player_state", {}))
+	var level := get_node_or_null("Gameplay/LevelAdvance")
+	if level != null and level.has_method("restore_checkpoint"):
+		level.call("restore_checkpoint", progress)
 
 
 ## 服务器清理玩家节点（对端断线时）
 func _despawn_player(peer_id: int) -> void:
+	_ready_peers.erase(peer_id)
 	var player: Node = _spawned_players.get(peer_id)
 	if player != null:
 		_spawned_players.erase(peer_id)
@@ -100,8 +127,8 @@ func _despawn_player(peer_id: int) -> void:
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	if NetworkManager.is_server():
-		_spawn_player(peer_id)  # 中途加入（M0 边界：允许但少见）
+	# 这里只记录连接事件；生成必须等客户端 _client_ready，避免场景切换竞态。
+	pass
 
 
 func _on_peer_disconnected(peer_id: int) -> void:

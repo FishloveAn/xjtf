@@ -35,6 +35,12 @@ func _initialize() -> void:
 		_remove_marker("lan_sim_client_ready_%s" % _mode)
 		_remove_marker("lan_sim_b6_ready")
 		_remove_marker("lan_sim_client_b8_done")
+		_remove_marker("lan_sim_client_ready_wave")
+		_remove_marker("lan_sim_client_ready_damage")
+		_remove_marker("lan_sim_client_saw_damage")
+		_remove_marker("lan_sim_client_saw_down")
+	else:
+		_remove_marker("lan_sim_server_main_ready_%s" % _mode)
 	call_deferred("_run")
 
 
@@ -52,6 +58,10 @@ func _run() -> void:
 		else:
 			await _client_disconnect(deadline)
 	_summary()
+	if _mode == "disconnect" and _role == "client":
+		# 模拟直接关窗：不先切场景，避免仍联网时销毁同步节点制造缓存错误。
+		quit(1 if _fail > 0 else 0)
+		return
 	change_scene_to_file(MAIN_MENU_SCENE)  # 释放主场景防对象泄漏（与 debug_wave_flow 一致）
 	await create_timer(0.6).timeout
 	quit(1 if _fail > 0 else 0)
@@ -61,22 +71,22 @@ func _run() -> void:
 
 func _server_main(deadline: int) -> void:
 	var err: int = _nm.create_host(PORT)
-	_check("B1 建房 create_host(5555)", err == OK, "err=%d" % err)
+	_check("B1 建房 create_host(%d)" % PORT, err == OK, "err=%d" % err)
 	if err != OK:
 		return
-	# 等客户端接入且主场景就绪后再进主场景（真机同时切场景时序：
-	# 客户端场景先就绪，服务器 spawn 的复制包才不丢）
+	# 服务器先进入主场景，再通知客户端进入；客户端就绪后用 _client_ready 请求生成自身。
 	var ok := await _poll(deadline, 15.0, func() -> bool: return not _nm.multiplayer.get_peers().is_empty())
 	_check("B2 客户端接入(peers 非空)", ok, "peers=%s" % _nm.multiplayer.get_peers())
 	if not ok:
 		return
 	_client_peer = int(_nm.multiplayer.get_peers()[0])
 	print("[SIM] INFO client_peer=%d" % _client_peer)
+	_main = await _enter_main_scene()
+	await create_timer(1.0).timeout
+	_ensure_refs()
+	_write_marker("lan_sim_server_main_ready_%s" % _mode)
 	ok = await _poll(deadline, 20.0, func() -> bool: return _has_marker("lan_sim_client_ready_%s" % _mode))
 	_check("B2 客户端主场景就绪(标记)", ok)
-	_main = await _enter_main_scene()
-	await create_timer(1.0).timeout  # main.gd 0.5s 宽限后玩家 1 生成
-	_ensure_refs()
 	ok = await _poll(deadline, 15.0, func() -> bool: return _find_player(_client_peer) != null)
 	var p2: Node3D = _find_player(_client_peer)
 	_check("B3 加入列表/客户端玩家出现", ok, "client_peer=%d" % _client_peer)
@@ -87,16 +97,24 @@ func _server_main(deadline: int) -> void:
 	_write_marker("lan_sim_b6_ready")  # 通知客户端：服务器已就绪，可注入位移
 	# B6：等 client 注入位移 → 服务器观察到（客户端权威位移 20Hz 上报）
 	var p2_init: Vector3 = p2.global_position
+	var p2_target := Vector3(0, 0, 8)
 	ok = await _poll(deadline, 10.0, func() -> bool:
-		return p2.global_position.distance_to(p2_init) > 1.0)
-	_check("B6 客户端位移同步到服务器", ok, "init=%s now=%s" % [p2_init, p2.global_position])
+		return p2.global_position.distance_to(p2_target) < 1.0)
+	_check("B6 客户端位移同步到服务器", ok, "init=%s target=%s now=%s" % [p2_init, p2_target, p2.global_position])
 	# B9：端口被占用 → 再建房应失败
 	err = _nm.create_host(PORT)
 	_check("B9 端口占用建房失败", err != OK, "err=%d" % err)
 	# M2 波次：跳过 Setup 倒计时直接开波（authority 广播 → 客户端收到 wave_begun）
+	await _poll(deadline, 15.0, func() -> bool: return _has_marker("lan_sim_client_ready_wave"))
 	var wm := _main.get_node_or_null("Gameplay/WaveManager")
 	if wm != null:
+		wm.set("level_mode", false)
+		wm.call("_begin_wave", 0)
 		wm.call("_enter_wave_active")
+		wm.set("_special_pending_timer", 100.0)
+		var cfg = wm.get("_current_wave")
+		if cfg is Dictionary:
+			cfg["spawn_interval"] = 0.05
 		wm.set("_spawn_timer", 0.0)  # 注入首只立即刷（正常刷怪路径，只缩短计时）
 		await create_timer(0.2).timeout
 		wm.set("_spawn_timer", 0.0)
@@ -105,6 +123,8 @@ func _server_main(deadline: int) -> void:
 	ok = await _poll(deadline, 8.0, func() -> bool: return _zombies.get_child_count() >= 3)
 	_check("M2 服务器刷出丧尸(≥3)", ok, "count=%d" % _zombies.get_child_count())
 	# M2 丧尸死亡 → 回池移除（服务器端子节点回落）
+	if wm != null:
+		wm.set_process(false)  # 冻结继续刷怪，才能准确观察目标节点回池
 	var z_before := _zombies.get_child_count()
 	if z_before > 0:
 		var zh := _zombies.get_child(0).get_node_or_null("Health")
@@ -144,6 +164,7 @@ func _server_main(deadline: int) -> void:
 		_check("F2b 医疗补给 +50HP", p1state.hp == 70.0, "hp=%.0f" % p1state.hp)
 		_check("F3 补给点拾取后消失(服务器)", not is_instance_valid(ammo) and not is_instance_valid(med))
 	# M2 伤害 D2：服务器对客户端玩家结算，客户端经 HealthSync 同步（client 侧观察）
+	await _poll(deadline, 15.0, func() -> bool: return _has_marker("lan_sim_client_ready_damage"))
 	var p2state := p2.get_node_or_null("Health")
 	if p2state != null:
 		p2state.hp = 100.0  # 复位（同上：防残留丧尸攻击影响断言）
@@ -151,11 +172,11 @@ func _server_main(deadline: int) -> void:
 		p2state.take_damage(30.0)  # 100→70
 		ok = await _poll(deadline, 3.0, func() -> bool: return p2state.hp == 70.0)
 		_check("D2 伤害服务器结算", ok, "hp=%.0f" % p2state.hp)
-		await create_timer(2.0).timeout  # 给客户端 HealthSync 观察 hp=70 的窗口
+		await _poll(deadline, 10.0, func() -> bool: return _has_marker("lan_sim_client_saw_damage"))
 	# M2 救援 D3：客户端玩家倒地 → 玩家 1 靠近救援 → 3s 复活 hp50（client 侧观察同步）
 	if p2state != null and p1 != null:
 		p2state.take_damage(100.0)  # 70→0 DOWN
-		await create_timer(0.3).timeout
+		await _poll(deadline, 10.0, func() -> bool: return _has_marker("lan_sim_client_saw_down"))
 		p1.global_position = p2.global_position
 		var p1state := p1.get_node_or_null("Health")
 		p2state.try_start_revive(p1state)
@@ -167,6 +188,7 @@ func _server_main(deadline: int) -> void:
 	# 模拟主机退出：断开会话并保持进程运行，让客户端收到 server_disconnected（B8）。
 	# 不显式 close ENet peer（实测 close 会卡住主循环）；SceneMultiplayer 置 null 后
 	# 客户端按 ENet 超时检测到断开。等客户端 B8 完成后本进程才正常退出
+	_main.process_mode = Node.PROCESS_MODE_DISABLED
 	_nm.disconnect_from_server()
 	await _poll(deadline, 20.0, func() -> bool: return _has_marker("lan_sim_client_b8_done"))
 
@@ -184,6 +206,10 @@ func _client_main(deadline: int) -> void:
 	_check("B2 连接成功 connected_to_server", ok)
 	if not ok:
 		return
+	ok = await _poll(deadline, 15.0, func() -> bool: return _has_marker("lan_sim_server_main_ready_%s" % _mode))
+	_check("B4 服务器主场景就绪", ok)
+	if not ok:
+		return
 	_main = await _enter_main_scene()
 	_ensure_refs()
 	_write_marker("lan_sim_client_ready_%s" % _mode)  # 通知服务器：本端场景已就绪
@@ -196,17 +222,23 @@ func _client_main(deadline: int) -> void:
 	_check("B5 客户端看到玩家1", _find_player(1) != null)
 	if _me == null:
 		return
+	_check("B4 客户端出生贴地", absf(_me.global_position.y) < 1.0,
+		"pos=%s gravity=%s authority=%s" % [_me.global_position, _me.get_gravity(), _me.is_multiplayer_authority()])
 	# B6 注入位移：等服务器基准就绪（防注入同步先于服务器记录初始位置），本地立即生效
 	var ok2 := await _poll(deadline, 10.0, func() -> bool: return _has_marker("lan_sim_b6_ready"))
 	_check("B6 服务器基准就绪", ok2)
 	var target := Vector3(0, 0, 8)
 	_me.global_position = target
 	_check("B6 注入位移本地生效", _me.global_position.distance_to(target) < 0.5)
+	await create_timer(1.0).timeout
+	_check("B6 客户端位置保持稳定", _me.global_position.distance_to(target) < 1.0,
+		"target=%s now=%s" % [target, _me.global_position])
 	# M2 波次广播：收到 wave_begun（authority 广播链路）
 	var wm := _main.get_node_or_null("Gameplay/WaveManager")
 	_wave_begun = 0
 	if wm != null:
 		wm.event_wave_begun.connect(func(_i: int) -> void: _wave_begun += 1)
+	_write_marker("lan_sim_client_ready_wave")
 	ok = await _poll(deadline, 20.0, func() -> bool: return _wave_begun > 0)
 	_check("M2 波次广播 wave_begun", ok)
 	# M2 丧尸复制：ZombieSpawner 复制的副本（记录峰值，等回池后回落）
@@ -220,13 +252,16 @@ func _client_main(deadline: int) -> void:
 	# M2 补给两端一致：pickup_used 广播 → 所有端本地消失
 	ok = await _poll(deadline, 15.0, func() -> bool: return _count_supplies() == 0)
 	_check("M2 补给点拾取两端一致消失", ok, "remain=%d" % _count_supplies())
+	_write_marker("lan_sim_client_ready_damage")
 	# M2 伤害/救援同步（HealthSync 服务器权威 → 客户端 hp/state）
 	var my_state := _me.get_node_or_null("Health")
 	if my_state != null:
 		ok = await _poll(deadline, 15.0, func() -> bool: return my_state.hp == 70.0)
 		_check("D2 客户端血量同步(100→70)", ok, "hp=%.0f" % my_state.hp)
+		_write_marker("lan_sim_client_saw_damage")
 		ok = await _poll(deadline, 15.0, func() -> bool: return my_state.state == 1)
 		_check("D3 客户端倒地状态同步", ok, "state=%d" % my_state.state)
+		_write_marker("lan_sim_client_saw_down")
 		ok = await _poll(deadline, 12.0, func() -> bool: return my_state.state == 0 and my_state.hp == 50.0)
 		_check("D3 客户端复活同步 hp50", ok, "hp=%.0f state=%d" % [my_state.hp, my_state.state])
 	# 完成所有 M2/B 组验证 → 先通知服务器（服务器收到后断开，触发下方 B8）
@@ -246,7 +281,7 @@ func _client_main(deadline: int) -> void:
 
 func _server_disconnect(deadline: int) -> void:
 	var err: int = _nm.create_host(PORT)
-	_check("B1 建房 create_host(5555)", err == OK, "err=%d" % err)
+	_check("B1 建房 create_host(%d)" % PORT, err == OK, "err=%d" % err)
 	if err != OK:
 		return
 	# 等客户端接入后同步进主场景（同 _server_main 时序）
@@ -255,13 +290,14 @@ func _server_disconnect(deadline: int) -> void:
 		_check("B3/B5 客户端接入互见", false)
 		return
 	_client_peer = int(_nm.multiplayer.get_peers()[0])
+	_main = await _enter_main_scene()
+	await create_timer(1.0).timeout
+	_players = _main.get_node_or_null("Players") as Node3D
+	_write_marker("lan_sim_server_main_ready_%s" % _mode)
 	ok = await _poll(deadline, 20.0, func() -> bool: return _has_marker("lan_sim_client_ready_%s" % _mode))
 	if not ok:
 		_check("B3/B5 客户端接入互见", false)
 		return
-	_main = await _enter_main_scene()
-	await create_timer(1.0).timeout
-	_players = _main.get_node_or_null("Players") as Node3D
 	ok = await _poll(deadline, 15.0, func() -> bool: return _find_player(_client_peer) != null)
 	_check("B3/B5 客户端接入互见", ok)
 	if not ok:
@@ -286,6 +322,10 @@ func _client_disconnect(deadline: int) -> void:
 	var ok := await _poll(deadline, 10.0, func() -> bool: return _got_conn)
 	_check("B2 连接成功 connected_to_server", ok)
 	if not ok:
+		return
+	ok = await _poll(deadline, 15.0, func() -> bool: return _has_marker("lan_sim_server_main_ready_%s" % _mode))
+	if not ok:
+		_check("B4 服务器主场景就绪", false)
 		return
 	_main = await _enter_main_scene()
 	await create_timer(1.0).timeout

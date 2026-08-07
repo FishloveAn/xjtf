@@ -14,6 +14,15 @@ extends CharacterBody3D
 const WALK_SPEED := 5.0       # 米/秒，移动速度
 const JUMP_VELOCITY := 4.5    # 米/秒，起跳初速度
 
+## 脚步/跳跃/落地音频（系统设计 02-设计-音频-系统设计.md §7.2）
+const STEP_INTERVAL_WALK := 0.50   # 秒/步（行走步频）
+const STEP_INTERVAL_RUN := 0.35    # 秒/步（奔跑步频；未来 Shift 奔跑键复用 run 事件）
+const RUN_SPEED_THRESHOLD := 4.0   # 米/秒，水平速度高于此值按"奔跑"脚步
+const LAND_FALL_SPEED := 6.0       # 米/秒，落地音触发的最小下落速度
+## 脚下材质 → 脚步事件路由（射线命中 StaticBody3D 的节点名关键字，见 _detect_ground_material）
+const _STEP_MATERIAL_METAL := ["door", "metal", "plate", "grate", "pipe"]
+const _STEP_MATERIAL_DIRT := ["dirt", "soil", "sand", "mud"]
+
 @export var mouse_sensitivity := 0.002  # 弧度/像素，鼠标灵敏度
 
 ## 头部俯仰角（弧度）。由同步器跨端同步；setter 负责同步驱动 Head 旋转
@@ -34,11 +43,14 @@ var _weapons: Array[WeaponBase] = []
 var _current_weapon_index := 0
 ## 左键按住状态（M3-S1 自动武器连发）：按下置 true、松开置 false；轮询只对 auto 武器开火
 var _fire_held := false
+## 脚步/落地状态（仅本地玩家使用）
+var _step_timer := 0.0
+var _was_on_floor := true
+var _fall_speed := 0.0
 
 
 func _ready() -> void:
 	add_to_group("players")  # HUD 等按组找本地玩家（tech-plan §8.4 用组代替长引用链）
-	_setup_sync()
 	_collect_weapons()
 	_place_at_spawn_point()
 	if is_multiplayer_authority():
@@ -54,6 +66,7 @@ func _ready() -> void:
 func _enter_tree() -> void:
 	if name.is_valid_int():
 		set_multiplayer_authority(name.to_int())
+	_setup_sync()
 
 
 ## 捕获鼠标（A5）：延迟一帧执行，等待窗口聚焦
@@ -89,8 +102,25 @@ func _place_at_spawn_point() -> void:
 	var points := get_tree().get_nodes_in_group("spawn_point")
 	if points.is_empty():
 		return
-	var index := (get_multiplayer_authority() - 1) % points.size()
-	global_position = (points[index] as Node3D).global_position
+	# ENet peer id 是随机大整数，不能用奇偶数取模分配出生点，否则会与主机高概率重叠。
+	# 所有端对同一组 peer id 排序，得到一致且不重复的槽位。
+	var peer_ids: Array[int] = [NetworkManager.SERVER_ID]
+	if NetworkManager.is_network_active():
+		var local_peer_id := multiplayer.get_unique_id()
+		if not peer_ids.has(local_peer_id):
+			peer_ids.append(local_peer_id)
+	for peer_id in multiplayer.get_peers():
+		if not peer_ids.has(peer_id):
+			peer_ids.append(peer_id)
+	peer_ids.sort()
+	var index := peer_ids.find(get_multiplayer_authority())
+	if index < 0:
+		index = 0
+	index %= points.size()
+	var spawn := points[index] as Node3D
+	global_position = spawn.global_position
+	# 出生点朝向属于关卡设计的一部分；忽略它会让玩家面朝墙，按 W 看起来像无法移动。
+	global_rotation.y = spawn.global_rotation.y
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -253,13 +283,34 @@ func _collect_weapons() -> void:
 	_set_active_weapon(0)
 
 
-## 切换激活武器：可见性即激活标记（弹药各自独立，由每个武器节点自身维护）
+## 切换激活武器：可见性即激活标记（弹药各自独立，由每个武器节点自身维护）。
+## 切枪为本地状态（M1-S4 记录，不同步他人）→ 切枪音只本端播（3D 挂玩家近距衰减，audio_events.json weapon_switch）
 func _set_active_weapon(index: int) -> void:
 	if index < 0 or index >= _weapons.size():
 		return
+	if index != _current_weapon_index and _weapons.size() > 1:
+		SfxPool.play_3d("weapon_switch", global_position)
 	_current_weapon_index = index
 	for i in _weapons.size():
 		_weapons[i].visible = (i == index)
+
+
+## 从检查点恢复当前武器和各武器弹匣；仅服务器在玩家 ready 后调用。
+func restore_equipment(equipment: Dictionary) -> bool:
+	var magazines = equipment.get("magazines")
+	if not (magazines is Dictionary) or _weapons.is_empty():
+		return false
+	var active_weapon := String(equipment.get("active_weapon", ""))
+	var active_index := -1
+	for index in _weapons.size():
+		var weapon := _weapons[index]
+		if magazines.has(weapon.weapon_id):
+			weapon.mag_current = clampi(int(magazines[weapon.weapon_id]), 0, weapon.mag_size)
+		if weapon.weapon_id == active_weapon:
+			active_index = index
+	if active_index >= 0:
+		_set_active_weapon(active_index)
+	return true
 
 
 ## 当前武器（WeaponPivot 下激活的那把）
@@ -285,6 +336,65 @@ func _poll_auto_fire() -> void:
 	weapon.try_fire()
 
 
+## 脚步/落地音频（每物理帧，仅本地玩家 authority 分支调用）：
+## 步频计时触发脚步（速度阈值分走/跑事件）；落地检测（下落速度超阈值播 player_land）
+func _tick_movement_sfx(delta: float) -> void:
+	var on_floor := is_on_floor()
+	if on_floor and not _was_on_floor:
+		# 落地：从空中回落地面的那一帧
+		if _fall_speed >= LAND_FALL_SPEED:
+			SfxPool.play_3d("player_land", global_position)
+		_fall_speed = 0.0
+	elif not on_floor:
+		# 空中：累积下落速度（velocity.y 为负）
+		_fall_speed = maxf(_fall_speed, -velocity.y)
+	var h_speed := Vector2(velocity.x, velocity.z).length()
+	if on_floor and h_speed > 0.5:
+		_step_timer = _step_timer - delta
+		if _step_timer <= 0.0:
+			var running := h_speed > RUN_SPEED_THRESHOLD
+			SfxPool.play_3d(_footstep_event(), global_position)
+			var interval := STEP_INTERVAL_RUN if running else STEP_INTERVAL_WALK
+			# 步频 ±15% 抖动，避免多步节奏像节拍器
+			_step_timer = interval * randf_range(0.85, 1.15)
+	else:
+		_step_timer = 0.0
+	_was_on_floor = on_floor
+
+
+## 脚步事件：按脚下材质路由（材质检测失败/未知一律水泥）
+func _footstep_event() -> String:
+	match _detect_ground_material():
+		"metal":
+			return "footstep_metal"
+		"dirt":
+			return "footstep_dirt"
+		_:
+			return "footstep_concrete"
+
+
+## 脚下材质检测：向下射线（mask=1 世界层，exclude 自身碰撞体），
+## 命中 StaticBody3D 节点名关键字匹配材质（rustyard：Ground/Wall→水泥、Door→金属）
+func _detect_ground_material() -> String:
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3(0.0, -0.4, 0.0)
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(0.0, -3.0, 0.0), 1, [get_rid()])
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return "concrete"
+	var collider := hit.get("collider") as Node
+	if collider == null:
+		return "concrete"
+	var n := String(collider.name).to_lower()
+	for kw in _STEP_MATERIAL_METAL:
+		if n.contains(kw):
+			return "metal"
+	for kw in _STEP_MATERIAL_DIRT:
+		if n.contains(kw):
+			return "dirt"
+	return "concrete"
+
+
 func _physics_process(delta: float) -> void:
 	# 远端玩家不做输入，只由同步器更新 transform
 	if not is_multiplayer_authority():
@@ -308,6 +418,9 @@ func _physics_process(delta: float) -> void:
 		velocity.y = velocity.y + get_gravity().y * delta
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
+		SfxPool.play_3d("player_jump", global_position)
 	move_and_slide()
 	# 自动武器连发轮询：按住左键对 auto 武器持续开火（半自动按一次打一发，不连发）
 	_poll_auto_fire()
+	# 脚步/落地音频（仅本地玩家；素材缺失静默，就位即生效）
+	_tick_movement_sfx(delta)

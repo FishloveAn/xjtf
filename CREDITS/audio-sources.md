@@ -42,6 +42,22 @@
 
 > 备注：Kenney Impact Sounds 包内**无 `impactFlesh_*`**（清单 §2.1 猜测名），血肉命中用最接近的 `impactPunch_*`/`impactSoft_*` 替代（真实 CC0 文件）。枪声为 impactMetal/Plate 打击层占位（节奏稳、写实度弱），打磨期按用户拍板方案换 freesound CC0 真实枪声。
 
+## 系统设计补充（2026-08-07，audio_events.json 事件表驱动）
+
+> 事件→文件映射已迁至 `data/audio_events.json`（数据驱动，改 JSON 生效）。本表仍为**素材来源记账**权威，事件表只引用文件名。
+
+| 事件组 | 当前状态 | 素材来源建议 |
+|---|---|---|
+| `rifle_fire` / `smg_fire` | **占位借用手枪素材**（impactMetal 系，已在上面记账）+ `pitch_scale` 区分音色（rifle 0.90-0.96 中低频 / smg 1.04-1.10 轻快） | freesound CC0 枪声入库后，把 `audio_events.json` 中两事件 `files` 换成 `sfx/sfx_weapon_rifle_fire_01~03.ogg` / `sfx/sfx_weapon_smg_fire_01~03.ogg` 即生效 |
+| `footstep_concrete/metal/dirt` | 预留（无素材静默；触发已接入 player_controller 脚步检测） | Kenney **Footstep Sounds**（CC0，含 3-5 材质多步幅） |
+| `player_jump/land/down/die/revive` | 预留（无素材静默；触发已接入 player_controller/player_state） | Kenney RPG/Impact 包内 jump/land 类 + 人声呼吸/闷哼类 CC0 |
+| `door_open/close`、`pickup_ammo/health` | 预留（无素材静默；触发已接入 door/pickup_item/supply_point） | Kenney **Interface Sounds** 内 switch/slot 类短音（已入库的 switch_*.ogg 可先行改名复用） |
+| `weapon_switch`（切枪） | 预留 | 同 `switch_*.ogg` 系列 |
+| `ui_confirm/click/cancel/denied` | 预留（事件已注册，未接线 UI） | 已入库 `confirmation_*.ogg` / `click_*.ogg` 改名复用 |
+| `weapon_aim_in/out`、`player_roll`、`switch_toggle/button_press/mechanism`、`zombie_attack_hint` | 预留（事件已注册，玩法接入后触发） | 对应玩法落地时再选材 |
+
+> 约定：**凡"预留"事件，素材就位即出声，无需改任何脚本**（只改 `audio_events.json` 的 `files` 或按命名规范放同名文件）。素材入库后须回填本表逐条记账（下载即记账纪律）。
+
 ## 待办
 
 - [x] Kenney Impact Sounds / Interface Sounds 下载入库（2026-08-04，工程执行）

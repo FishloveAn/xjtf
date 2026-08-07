@@ -43,11 +43,14 @@ var _prev_reloading := false
 
 
 func _ready() -> void:
-	# 弹药/换弹服务器权威（tech-plan §4.2）：武器节点权威固定为服务器
-	set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_load_weapon_data()
 	mag_current = mag_size
 	_prev_reloading = reloading
+
+
+func _enter_tree() -> void:
+	# Spawner 在 _ready 前就可能启动复制，同步器必须在入树阶段完成配置。
+	set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_setup_sync()
 
 
@@ -67,16 +70,17 @@ func _process(delta: float) -> void:
 
 ## 配置弹药/换弹同步（4.7 铁律：先 add_property 再 set_replication_mode；replication_interval 非 sync_interval）
 func _setup_sync() -> void:
-	if _weapon_sync == null:
+	var weapon_sync := get_node_or_null("WeaponSync") as MultiplayerSynchronizer
+	if weapon_sync == null:
 		return
-	_weapon_sync.set_multiplayer_authority(NetworkManager.SERVER_ID)
+	weapon_sync.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	var cfg := SceneReplicationConfig.new()
 	cfg.add_property(NodePath(".:mag_current"))
 	cfg.property_set_replication_mode(NodePath(".:mag_current"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
 	cfg.add_property(NodePath(".:reloading"))
 	cfg.property_set_replication_mode(NodePath(".:reloading"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
-	_weapon_sync.replication_config = cfg
-	_weapon_sync.replication_interval = 0.05
+	weapon_sync.replication_config = cfg
+	weapon_sync.replication_interval = 0.05
 
 
 # --- 数据装载（数据驱动，tech-plan §6.2） ---
@@ -129,7 +133,7 @@ func try_fire() -> void:
 	var dir := _get_aim_dir()
 	# 空仓点击（M3-S7）：弹匣空 → 只播"咔"声不打枪声；请求仍发送（服务器 _server_fire 走自动换弹）
 	if mag_current <= 0:
-		_play_sfx("weapon_empty")
+		_play_sfx(weapon_id + "_empty")
 		if NetworkManager.is_server():
 			_server_fire(origin, dir)
 		else:
@@ -239,12 +243,14 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 	SfxPool.play_3d(event, pos)
 
 
-## 换弹音监听（M3-S7）：reloading 翻转 → 播开始/上膛音。服务器状态更新后与客户端同步值落位后各自本地播
+## 换弹音监听（M3-S7 + 系统设计 2026-08-07）：reloading 翻转 → 播武器专属开始/上膛音
+## （weapon_id + "_reload_start/_reload_done"；每把武器在 audio_events.json 独立配 pitch 区分音色，
+##   素材就位前静默）。服务器状态更新后与客户端同步值落位后各自本地播
 func _watch_reload_state() -> void:
 	if reloading and not _prev_reloading:
-		_play_sfx("weapon_reload")
+		_play_sfx(weapon_id + "_reload_start")
 	elif not reloading and _prev_reloading:
-		_play_sfx("weapon_reload_done")
+		_play_sfx(weapon_id + "_reload_done")
 	_prev_reloading = reloading
 
 

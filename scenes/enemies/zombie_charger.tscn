@@ -25,6 +25,12 @@ position = Vector3(0, 1.5, 0)
 position = Vector3(0, 1.05, 0)
 shape = SubResource("CapsuleShape3D_collision")
 
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.4
+target_desired_distance = 2.0
+radius = 0.5
+height = 2.1
+
 [node name="AI" type="Node" parent="."]
 script = ExtResource("1_ai")
 

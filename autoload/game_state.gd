@@ -21,6 +21,9 @@ var revives := 0         # 救援完成数（倒地玩家被救起）
 var downs := 0           # 玩家倒地次数（ALIVE→DOWN 每次计入）
 var segment_time_s := 0.0  # 段落/本局通关用时（秒，finish_segment 结算）
 var session_start_time := 0.0
+var checkpoint_path := CheckpointManager.SAVE_PATH
+var _pending_checkpoint: Dictionary = {}
+var _checkpoint_resume_requested := false
 
 
 func _ready() -> void:
@@ -37,6 +40,34 @@ func reset_session() -> void:
 	downs = 0
 	segment_time_s = 0.0
 	session_start_time = Time.get_ticks_msec() / 1000.0
+	if _checkpoint_resume_requested and NetworkManager.is_server() and CheckpointManager.has_progress(checkpoint_path):
+		prepare_checkpoint_resume(CheckpointManager.load_progress(checkpoint_path))
+	else:
+		_pending_checkpoint.clear()
+	_checkpoint_resume_requested = false
+
+
+## 菜单明确选择“继续”时置位；普通建房、加入或失败路径必须清除。
+func request_checkpoint_resume(should_resume: bool) -> void:
+	_checkpoint_resume_requested = should_resume
+
+
+func is_checkpoint_resume_requested() -> bool:
+	return _checkpoint_resume_requested
+
+
+## 为新会话准备一次性检查点；测试可传入隔离数据，正式流程由 reset_session 从磁盘读取。
+func prepare_checkpoint_resume(progress: Dictionary) -> void:
+	_pending_checkpoint = progress.duplicate(true)
+
+
+## 仅服务器玩家可消费一次；客户端加入不会取得或清除主机本机存档。
+func take_checkpoint_resume(peer_id: int) -> Dictionary:
+	if peer_id != NetworkManager.SERVER_ID or _pending_checkpoint.is_empty():
+		return {}
+	var progress := _pending_checkpoint
+	_pending_checkpoint = {}
+	return progress
 
 
 # --- 服务器权威累加（仅服务器；客户端不得调用） ---

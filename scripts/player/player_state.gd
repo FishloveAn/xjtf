@@ -42,7 +42,7 @@ var _debug_self_revive_mode := false
 @onready var _health_sync: MultiplayerSynchronizer = $HealthSync
 
 
-func _ready() -> void:
+func _enter_tree() -> void:
 	# 状态机节点权威 = 服务器：血量/状态服务器权威（tech-plan §4.2），与 HealthSync 一致
 	set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_setup_health_sync()
@@ -59,16 +59,17 @@ func _process(delta: float) -> void:
 
 ## 配置血量/状态同步（4.7 铁律：先 add_property 再 set_replication_mode；replication_interval 非 sync_interval）
 func _setup_health_sync() -> void:
-	if _health_sync == null:
+	var health_sync := get_node_or_null("HealthSync") as MultiplayerSynchronizer
+	if health_sync == null:
 		return
-	_health_sync.set_multiplayer_authority(NetworkManager.SERVER_ID)
+	health_sync.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	var cfg := SceneReplicationConfig.new()
 	cfg.add_property(NodePath(".:hp"))
 	cfg.property_set_replication_mode(NodePath(".:hp"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
 	cfg.add_property(NodePath(".:state"))
 	cfg.property_set_replication_mode(NodePath(".:state"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
-	_health_sync.replication_config = cfg
-	_health_sync.replication_interval = 0.05
+	health_sync.replication_config = cfg
+	health_sync.replication_interval = 0.05
 
 
 ## 服务器结算一次伤害（tech-plan §4.2）。
@@ -85,6 +86,7 @@ func take_damage(dmg: float, attacker: Node = null) -> void:
 			_clear_active_revive()
 			state = State.DEAD
 			died.emit(attacker)
+			_broadcast_player_die_sound()  # 死亡音（3D 世界声，全端可听）
 		State.ALIVE:
 			hp = hp - dmg
 			damaged.emit(dmg, attacker, hp)
@@ -93,6 +95,7 @@ func take_damage(dmg: float, attacker: Node = null) -> void:
 				hp = 0.0
 				state = State.DOWN  # 倒地不是死亡：不 emit died
 				GameState.register_down()  # S6 幸存统计：倒地次数累加（服务器权威）
+				_broadcast_player_down_sound()  # 倒地音（3D 世界声，全端可听）
 
 
 ## 服务器：冲撞者命中 → 强制倒地（压制，M3-S2）。ALIVE→DOWN（hp=0，可被队友救援）；
@@ -108,12 +111,14 @@ func apply_pin(attacker: Node = null) -> void:
 			_clear_active_revive()
 			state = State.DEAD
 			died.emit(attacker)
+			_broadcast_player_die_sound()  # 死亡音（被撞死）
 		State.ALIVE:
 			hp = 0.0
 			damaged.emit(1.0, attacker, hp)
 			state = State.DOWN
 			_broadcast_player_hurt()
 			GameState.register_down()  # S6 幸存统计：被冲撞压制强制倒地计入倒地次数
+			_broadcast_player_down_sound()  # 倒地音（被撞倒）
 
 
 ## 服务器：医疗补给恢复（S4 补给点）。ALIVE 回血（setter 钳制到 max_hp）；
@@ -130,6 +135,15 @@ func apply_healing(amount: float) -> void:
 			hp = maxf(amount, REVIVE_HP)  # 医疗包 ≥ 复活保底血量
 		State.ALIVE:
 			hp = hp + amount  # setter 钳制到 max_hp
+
+
+## 服务器：重建玩家时恢复检查点生命状态，不触发伤害/倒地统计。
+func restore_checkpoint_state(saved_hp: float, saved_state: int) -> void:
+	if not NetworkManager.is_server():
+		return
+	_clear_active_revive()
+	state = clampi(saved_state, State.ALIVE, State.DEAD)
+	hp = saved_hp
 
 
 ## 所属玩家的 peer id（本节点权威已设为服务器，故从父节点 Player 取）
@@ -264,6 +278,35 @@ func revive_cancelled(_target_peer: int) -> void:
 func revive_done(_target_peer: int) -> void:
 	revive_active = false
 	revive_progress = 0.0
+	SfxPool.play_3d("player_revive", _player_global_position())  # 救援完成音（全端执行）
+
+
+## [authority] 服务器→所有人：玩家倒地（3D 世界声，播在玩家位置）
+@rpc("authority", "call_local", "reliable")
+func player_down_sound() -> void:
+	SfxPool.play_3d("player_down", _player_global_position())
+
+
+## [authority] 服务器→所有人：玩家死亡（3D 世界声，播在玩家位置）
+@rpc("authority", "call_local", "reliable")
+func player_die_sound() -> void:
+	SfxPool.play_3d("player_die", _player_global_position())
+
+
+## 广播倒地音：单机（无 peer）直接本地执行；多人走 authority RPC（call_local 覆盖主机视角）
+func _broadcast_player_down_sound() -> void:
+	if NetworkManager.is_network_active():
+		player_down_sound.rpc()
+	else:
+		player_down_sound()
+
+
+## 广播死亡音：同倒地音
+func _broadcast_player_die_sound() -> void:
+	if NetworkManager.is_network_active():
+		player_die_sound.rpc()
+	else:
+		player_die_sound()
 
 
 ## [authority] 服务器→所有人：玩家受击（播放受击音效，3D 定位在玩家位置）

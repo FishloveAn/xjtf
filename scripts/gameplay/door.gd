@@ -20,7 +20,7 @@ func _ready() -> void:
 	set_multiplayer_authority(NetworkManager.SERVER_ID)
 
 
-## [authority] 服务器→所有人：开门（所有端隐藏门 + 禁用碰撞）
+## [authority] 服务器→所有人：开门（所有端隐藏门 + 禁用碰撞；全端本地播开门音）
 @rpc("authority", "call_local", "reliable")
 func door_opened() -> void:
 	if is_open:
@@ -29,3 +29,4 @@ func door_opened() -> void:
 	_mesh.visible = false
 	collision_layer = 0
 	collision_mask = 0
+	SfxPool.play_3d("door_open", global_position)  # 开门音（3D 门位置，全端可听）

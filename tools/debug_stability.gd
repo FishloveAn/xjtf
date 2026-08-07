@@ -18,7 +18,7 @@ const MAIN_SCENE := "res://scenes/main/main.tscn"
 const LEVEL_ADVANCE_PATH := "Gameplay/LevelAdvance"
 const WAVE_MANAGER_PATH := "Gameplay/WaveManager"
 const ZOMBIE_POOL_PATH := "Gameplay/WaveManager/ZombiePool"
-const SAVE_PATH := "user://save/progress.json"
+const SAVE_PATH := "user://save/debug_stability_progress.json"
 const SCENE_READY_WAIT := 2.0   # 秒，切场景后等待装配（main.gd 生成玩家 / 池预实例化）
 const TRIGGER_WAIT := 0.5       # 秒，传送后等 body_entered 触发
 const CLEANUP_WAIT := 3.0       # 秒，> 特感 die_clear_s 2.5s，死亡淡出完成
@@ -62,6 +62,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_log_line("=== STABILITY START (M3-S8 长局循环, rounds=%d) ===" % _rounds)
+	var game_state := root.get_node_or_null("GameState")
+	if game_state != null:
+		game_state.set("checkpoint_path", SAVE_PATH)
 	var round_times: Array = []   # 每局 [序号, 耗时s, 状态字符串]
 	for round_no in range(1, _rounds + 1):
 		var t0 := Time.get_ticks_msec()
@@ -99,8 +102,7 @@ func _run() -> void:
 ## 单局：加载主场景 → 三段式推进通关 → 局后泄漏检查 → 返回状态字符串
 func _play_one_round(round_no: int) -> String:
 	_log_line("--- 局 %d：加载主场景 ---" % round_no)
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(SAVE_PATH)  # 干净开局：清掉上局存档
+	_cleanup_save()
 	change_scene_to_file(MAIN_SCENE)
 	await create_timer(SCENE_READY_WAIT).timeout
 	var main := current_scene
@@ -137,7 +139,7 @@ func _play_one_round(round_no: int) -> String:
 	_check(bool(la.get("_holdout_cleared")), "高潮清波 → 后门安全屋开启（_holdout_cleared）")
 	await _teleport_to(player, "backdoor_enter", "到达后门安全屋")
 	_check(int(la.get("phase")) >= 4, "段落完成（phase=%d ≥ BACKDOOR）" % int(la.get("phase")))
-	_check(FileAccess.file_exists(SAVE_PATH), "存档生成：user://save/progress.json")
+	_check(FileAccess.file_exists(SAVE_PATH), "隔离存档生成")
 
 	# --- 局后泄漏检查：等死亡淡出完成 → 容器回落 / 池状态 ---
 	await create_timer(CLEANUP_WAIT).timeout
@@ -230,4 +232,24 @@ func _find_player(main: Node) -> Node3D:
 func _finish() -> void:
 	change_scene_to_file("res://scenes/ui/main_menu.tscn")
 	await create_timer(0.8).timeout
+	var final_scene := current_scene
+	# SceneTree.quit() 不会替测试脚本排空当前场景的延迟删除；显式释放并跨物理帧排空，
+	# 避免最后一局的拾取物/播放器随场景滞留到引擎退出检查。
+	if final_scene != null:
+		current_scene = null
+		final_scene.queue_free()
+	await process_frame
+	await physics_frame
+	await process_frame
+	# --fixed-fps 会让上述帧在数毫秒内跑完；给音频后端真实时间释放已停止的短音效。
+	OS.delay_msec(1000)
+	_cleanup_save()
+	if _log != null:
+		_log.close()
+		_log = null
 	quit(_fail)
+
+
+func _cleanup_save() -> void:
+	for suffix in ["", ".tmp", ".bak"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH + suffix))

@@ -7,7 +7,8 @@ extends SceneTree
 
 const MAIN_SCENE := "res://scenes/main/main.tscn"
 const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
-const PORT := 5555
+## 自动化联机测试使用独立端口，避免与用户正在运行的正式游戏（默认 5555）互相干扰。
+const PORT := 15556
 const SERVER_IP := "127.0.0.1"
 const MAX_TOTAL_SEC := 150.0  # 兜底总超时（防死锁，正常远小于此）
 

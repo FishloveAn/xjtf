@@ -44,6 +44,10 @@ text = "5555"
 layout_mode = 2
 text = "创建主机"
 
+[node name="ContinueButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "继续存档（创建主机）"
+
 [node name="JoinButton" type="Button" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 text = "加入游戏"

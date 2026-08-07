@@ -6,7 +6,7 @@ extends SceneTree
 ##  ② 区域推进：靠近安全屋门 → 门开 + 进入货场(YARD)；进通道(CORRIDOR)
 ##  ③ 固定尸潮触发 1：通道中段进入 → 第一波(level_horde_01)启动 → 杀光清波回等待
 ##  ④ 固定尸潮触发 2：进装卸广场 → 守点高潮(level_holdout)启动 → 杀光 → 后门开启
-##  ⑤ 到达后门安全屋：回血（满 hp）+ 存档 user://save/progress.json 生成（segment≥1/completed=true）
+##  ⑤ 到达后门安全屋：回血（满 hp）+ 隔离测试存档生成（segment≥1/completed=true）
 ##  ⑥ 全流程无红色 Error（脚本退出码 0 = 通过）
 ## 注意：工具脚本不引用游戏类（编译期 autoload 未注册，M2-S3 铁律），一律动态访问；
 ##       玩家穿传送模拟推进（不走物理路径），每步等 body_entered 触发。
@@ -14,7 +14,7 @@ extends SceneTree
 const MAIN_SCENE := "res://scenes/main/main.tscn"
 const LEVEL_ADVANCE_PATH := "Gameplay/LevelAdvance"
 const WAVE_MANAGER_PATH := "Gameplay/WaveManager"
-const SAVE_PATH := "user://save/progress.json"
+const SAVE_PATH := "user://save/debug_level_progress.json"
 # 阶段枚举（level_advance.gd Phase）：SAFE_ROOM=0 YARD=1 CORRIDOR=2 PLAZA=3 BACKDOOR=4 COMPLETE=5
 # 波次状态枚举（wave_manager.gd State）：SETUP=0 WAVE_ACTIVE=1 WAVE_CLEARED=2 ... LEVEL_WAIT=5
 const P_YARD := 1
@@ -48,8 +48,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_log_line("=== LEVEL_PROGRESS START (M3-S5 三段式推进) ===")
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(SAVE_PATH)
+	_cleanup_save()
+	var game_state := root.get_node_or_null("GameState")
+	if game_state != null:
+		game_state.set("checkpoint_path", SAVE_PATH)
 	change_scene_to_file(MAIN_SCENE)
 	await create_timer(2.0).timeout
 	var main := current_scene
@@ -104,7 +106,7 @@ func _run() -> void:
 	var ps := player.get_node_or_null("Health")
 	var max_hp: float = ps.get("max_hp")
 	_check(float(ps.get("hp")) >= max_hp - 0.01, "后门回血：hp 满值（%.0f/%.0f，from %.0f）" % [float(ps.get("hp")), max_hp, hp_before])
-	_check(FileAccess.file_exists(SAVE_PATH), "存档文件已生成：user://save/progress.json")
+	_check(FileAccess.file_exists(SAVE_PATH), "隔离存档文件已生成")
 	var parsed = _read_json(SAVE_PATH)
 	_check(int(parsed.get("segment", 0)) >= 1, "存档 segment=%d ≥ 1（段落完成标记）" % int(parsed.get("segment", 0)))
 	_check(bool(parsed.get("completed", false)), "存档 completed=true")
@@ -214,4 +216,10 @@ func _read_json(path: String) -> Dictionary:
 func _finish() -> void:
 	change_scene_to_file("res://scenes/ui/main_menu.tscn")
 	await create_timer(0.8).timeout
+	_cleanup_save()
 	quit(_fail)
+
+
+func _cleanup_save() -> void:
+	for suffix in ["", ".tmp", ".bak"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH + suffix))

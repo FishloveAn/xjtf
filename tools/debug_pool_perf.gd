@@ -17,6 +17,7 @@ const MEASURE_SECONDS := 5.0   # 每档采样时长
 const CLEANUP_WAIT := 2.6      # 秒，> DEATH_CLEANUP_DELAY 1.5s 回池完成
 const POOL_CAPACITY := 128     # 对象池容量（M3-S4 实测确认：100 峰值 + 特感分离够用）
 const TARGETS := [30, 60, 100] # 加压档位（M3 任务卡 §2-S4：30 基准 / 60 常驻 / 100 峰值）
+const TEST_SAVE_PATH := "user://save/debug_pool_perf_progress.json"
 
 var _fail := 0
 var _log := FileAccess.open("user://pool_perf_progress.log", FileAccess.WRITE)
@@ -43,6 +44,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_log_line("=== POOL_PERF START (M3-S4 30/60/100 加压) ===")
+	_cleanup_test_save()
+	var game_state := root.get_node_or_null("GameState")
+	if game_state != null:
+		game_state.set("checkpoint_path", TEST_SAVE_PATH)
 	change_scene_to_file(MAIN_SCENE)
 	await create_timer(2.0).timeout
 	var main := current_scene
@@ -202,4 +207,10 @@ func _wait_concurrent(wm: Node, target: int, timeout: float) -> void:
 func _finish() -> void:
 	change_scene_to_file("res://scenes/ui/main_menu.tscn")
 	await create_timer(0.8).timeout
+	_cleanup_test_save()
 	quit(_fail)
+
+
+func _cleanup_test_save() -> void:
+	for suffix in ["", ".tmp", ".bak"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE_PATH + suffix))

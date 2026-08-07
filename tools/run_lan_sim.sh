@@ -7,6 +7,8 @@
 ## 注意：sleep/seq 非所有 bash 必备，用 bash 内建 read -t / 算术循环替代
 set -u
 
+PROCESS_FAIL=0
+
 # Godot 4.7.1 可执行路径（可被环境变量 GODOT_BIN 覆盖）
 GODOT_BIN="${GODOT_BIN:-/c/Users/668/AppData/Local/CodexTools/Godot/4.7.1/Godot_v4.7.1-stable_win64_console.exe}"
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -27,13 +29,21 @@ run_round() {
 	local pid_cli=$!
 	local i
 	for ((i = 0; i < max; i++)); do
-		kill -0 $pid_srv 2>/dev/null || break
-		kill -0 $pid_cli 2>/dev/null || break
+		if ! kill -0 $pid_srv 2>/dev/null && ! kill -0 $pid_cli 2>/dev/null; then
+			break
+		fi
 		wait_sec 1
 	done
 	kill $pid_srv $pid_cli 2>/dev/null
-	wait $pid_srv 2>/dev/null; echo "  server exit=$?"
-	wait $pid_cli 2>/dev/null; echo "  client exit=$?"
+	wait $pid_srv 2>/dev/null; local srv_exit=$?
+	wait $pid_cli 2>/dev/null; local cli_exit=$?
+	echo "  server exit=$srv_exit"
+	echo "  client exit=$cli_exit"
+	# 0=正常退出，143=同伴先完成后由运行器收尾；其他状态都代表进程未正常运行。
+	if { [ "$srv_exit" -ne 0 ] && [ "$srv_exit" -ne 143 ]; } ||
+	   { [ "$cli_exit" -ne 0 ] && [ "$cli_exit" -ne 143 ]; }; then
+		PROCESS_FAIL=$((PROCESS_FAIL + 1))
+	fi
 }
 
 run_round main 220
@@ -52,4 +62,4 @@ grep -h "\[SIM\]\[FAIL\]" "$LOG_DIR"/*.log || echo "（无）"
 echo ""
 echo "详细日志：$LOG_DIR/server_main.log / client_main.log / server_disconnect.log / client_disconnect.log"
 
-[ "$FAIL_TOTAL" -eq 0 ]
+[ "$PROCESS_FAIL" -eq 0 ] && [ "$PASS_TOTAL" -gt 0 ] && [ "$FAIL_TOTAL" -eq 0 ]

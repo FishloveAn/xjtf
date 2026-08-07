@@ -63,7 +63,8 @@ func disconnect_from_server() -> void:
 
 ## 是否服务器（Listen Server 主机）进程
 func is_server() -> bool:
-	return multiplayer.is_server()
+	# 无网络会话即单机服务器语义，同时避免 peer 刚清空时调用 is_server 触发引擎报错。
+	return not is_network_active() or multiplayer.is_server()
 
 
 ## 是否本进程创建了主机

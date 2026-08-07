@@ -12,7 +12,7 @@
 ## 规范：tech-plan §7.3；数据全部来自 director.json（改 JSON 重启生效）；
 ##       M3-S2：specials 启用（enabled/threshold/max_simultaneous/cooldown），
 ##       WaveManager 经 can_spawn_special()/special_cap()/mark_special_spawned() 接特感时机；
-##       degrade 降级开关仅读取预留，实际降级逻辑 S3 对象池时实现
+##       degrade 启用时与波次 concurrent_cap 取较小值，限制普通怪与特感总同屏数
 ## 注意：burst 波（第 3 波）用固定批次间隔，不走压力缩放（S2 只接管 trickle）
 
 class_name Director
@@ -37,6 +37,7 @@ var _specials_max_simultaneous := 2
 var _specials_cooldown_s := 30.0
 var _last_special_spawn_s := -INF  # 服务器时间戳（秒），初始 -INF 使首次冷却已过
 var _degrade_enabled := false
+var _degrade_max_concurrent := 0
 
 var _wm: WaveManager = null
 var _wave_elapsed := 0.0
@@ -136,10 +137,24 @@ func _load_params() -> bool:
 	_specials_threshold = float(specials.get("threshold", 0.7))
 	_specials_max_simultaneous = int(specials.get("max_simultaneous", 2))
 	_specials_cooldown_s = float(specials.get("cooldown_s", 30.0))
-	# 降级开关占位（S3 对象池时实现实际降级）：仅读取
+	# 降级总同屏上限：enabled=false 完全不干预；启用时非法上限按 1 处理，避免失控或卡死。
 	var degrade: Dictionary = _params.get("degrade", {})
 	_degrade_enabled = bool(degrade.get("enabled", false))
+	if _degrade_enabled:
+		var raw_max = degrade.get("max_concurrent", 0)
+		if (raw_max is int or raw_max is float) and int(raw_max) > 0:
+			_degrade_max_concurrent = int(raw_max)
+		else:
+			_degrade_max_concurrent = 1
+			push_warning("[Director] degrade.max_concurrent 必须为正整数，已按 1 处理")
 	return true
+
+
+## 波次上限与降级上限共同生效；禁用时原样返回波次配置。
+func concurrent_cap(wave_cap: int) -> int:
+	if not _degrade_enabled:
+		return wave_cap
+	return mini(wave_cap, maxi(_degrade_max_concurrent, 1))
 
 
 ## 特感同屏上限：director.json max_simultaneous 生效，硬上限 5（tech-plan §10）

@@ -39,8 +39,10 @@ func _run() -> void:
 		wm._begin_wave(0)
 		_log_line("[FLOW] 已切回竞技场模式（level_mode=false），开始第 0 波")
 	var last_wave_active := -1
-	for i in 600:  # 每 0.5s 一轮，最多 300s（M3-S4：waves 20/45/80 需更久预算）
+	var reached_victory := false
+	for i in 240:  # 测试会压缩倒计时与刷怪间隔，最多 120 秒
 		await create_timer(0.5).timeout
+		_accelerate_wave(wm)
 		if i % 20 == 0:
 			_log_line("[FLOW] t=%ds state=%s wave=%s spawned=%s killed=%s" % [
 				int(i * 0.5), wm.get("state"), wm.get("current_wave_index"),
@@ -53,6 +55,7 @@ func _run() -> void:
 			_dump("SKIP_INTERMISSION", main)
 		elif st == 4:  # VICTORY：3 波打完通关
 			_dump("VICTORY", main)
+			reached_victory = true
 			break
 		elif st == 1 and wi != last_wave_active:
 			last_wave_active = wi
@@ -60,7 +63,17 @@ func _run() -> void:
 	_log_line("=== WAVE_FLOW END ===")
 	change_scene_to_file("res://scenes/ui/main_menu.tscn")
 	await create_timer(0.8).timeout
-	quit(0)
+	quit(0 if reached_victory else 1)
+
+
+## 只压缩测试等待，不改变波次配额和状态流转。
+func _accelerate_wave(wm: Node) -> void:
+	if int(wm.get("state")) == 0:  # SETUP
+		wm.set("_setup_timer", minf(float(wm.get("_setup_timer")), 0.05))
+	wm.set("_special_pending_timer", 100.0)
+	var cfg = wm.get("_current_wave")
+	if cfg is Dictionary and not cfg.is_empty():
+		cfg["spawn_interval"] = 0.05
 
 
 func _kill_all(main: Node) -> void:

@@ -21,6 +21,7 @@ const ZOMBIES_JSON_PATH := "res://data/zombies.json"
 var _body: CharacterBody3D
 var _visual: Node3D = null
 var _anim_player: AnimationPlayer = null   # M3-ART-P1：特感 AnimationPlayer（glb 内嵌），按状态切换播放
+var _navigation_agent: NavigationAgent3D = null
 var _die_clear_s := 2.5
 var _visual_tween: Tween = null     # 前摇/死亡表现 tween，跨状态切换必须 kill
 
@@ -31,18 +32,23 @@ static var _all_params: Dictionary = {}   # id → 条目（charger/spitter 各�
 var _params: Dictionary = {}
 
 
+func _enter_tree() -> void:
+	_body = get_parent() as CharacterBody3D
+	_setup_sync()
+
+
 func _ready() -> void:
 	_body = get_parent() as CharacterBody3D
 	if _body == null:
 		return
 	_visual = _body.get_node_or_null("Visual") as Node3D
+	_ensure_navigation_agent()
 	_load_params()
 	_apply_params()
 	var health := get_node_or_null("../Health") as ZombieHealth
 	if health != null and not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
 	add_to_group("zombie_specials")  # HUD 前摇警示等按组查找
-	_setup_sync()
 	_bind_anim_player()  # M3-ART-P1：特感带骨骼 glb（含 AnimationPlayer），按状态切换播放
 
 
@@ -128,6 +134,56 @@ func _play_sfx(event: String, pos: Vector3 = Vector3.ZERO) -> void:
 	if pos == Vector3.ZERO:
 		pos = _body.global_position
 	SfxPool.play_3d(event, pos)
+
+
+## 特感共用导航入口：有 NavMesh 时取下一路径点，旧关卡仍按直线方向运行。
+func _navigation_direction(destination: Vector3, desired_distance: float) -> Vector3:
+	var to_destination := destination - _body.global_position
+	to_destination.y = 0.0
+	if to_destination.length_squared() < 0.0001:
+		return Vector3.ZERO
+	if _has_navigation_map():
+		_navigation_agent.target_desired_distance = desired_distance
+		_navigation_agent.target_position = destination
+		if not _navigation_agent.is_navigation_finished():
+			var to_next := _navigation_agent.get_next_path_position() - _body.global_position
+			to_next.y = 0.0
+			if to_next.length_squared() >= 0.0001:
+				return to_next.normalized()
+	return to_destination.normalized()
+
+
+## 技能要求真实世界视线，避免只按欧氏距离隔墙冲撞或吐酸。
+func _has_world_line_to(target: Node3D) -> bool:
+	if target == null or _body.get_world_3d() == null:
+		return false
+	var from := _body.global_position + Vector3.UP * 0.8
+	var to := target.global_position + Vector3.UP * 0.8
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1, [_body.get_rid()])
+	var hit := _body.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return true
+	var collider := hit.get("collider") as Node
+	return collider == target or (collider != null and target.is_ancestor_of(collider))
+
+
+func _ensure_navigation_agent() -> void:
+	_navigation_agent = _body.get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+	if _navigation_agent == null:
+		_navigation_agent = NavigationAgent3D.new()
+		_navigation_agent.name = "NavigationAgent3D"
+		_body.add_child(_navigation_agent)
+	_navigation_agent.path_desired_distance = 0.4
+	_navigation_agent.target_desired_distance = 1.0
+	_navigation_agent.radius = 0.5
+	_navigation_agent.height = 2.1
+
+
+func _has_navigation_map() -> bool:
+	if _navigation_agent == null or not _navigation_agent.is_inside_tree():
+		return false
+	var map_rid := _navigation_agent.get_navigation_map()
+	return map_rid.is_valid() and not NavigationServer3D.map_get_regions(map_rid).is_empty()
 
 
 # --- 死亡（复用 Damageable.died 链路 + 血雾/淡出，不池化直连清理） ---

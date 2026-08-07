@@ -51,9 +51,11 @@ func _run() -> void:
 	var zombies := main.get_node_or_null("Zombies")
 	var world := main.get_node_or_null("World")
 	var wm := main.get_node_or_null(WAVE_MANAGER_PATH)
+	var door := main.get_node_or_null("World/Level/Rustyard/Walls/SafeDoor")
 	var player := _find_player(main)
-	_check(wm != null and zombies != null and world != null and player != null, "场景就绪：WaveManager/Zombies/World/玩家 存在")
-	if wm == null or zombies == null or world == null or player == null:
+	_check(wm != null and zombies != null and world != null and door != null and player != null,
+		"场景就绪：WaveManager/Zombies/World/SafeDoor/玩家 存在")
+	if wm == null or zombies == null or world == null or door == null or player == null:
 		_finish()
 		return
 	wm.set("_setup_timer", 999.0)  # 冻结普通波次刷怪，专注喷吐者行为测试
@@ -75,8 +77,19 @@ func _run() -> void:
 	_check(absf(float(ai.get("_spit_range")) - 25.0) < 0.001, "射程数据驱动=25m")
 	_check(absf(float(spitter.get_node_or_null("Health").get("hp")) - 150.0) < 0.001, "hp 数据驱动=150（脆，优先击杀）")
 
-	# --- ② 吐酸全流程：Chase → SpitWindup → 酸区落地 ---
-	_log_line("--- ② 吐酸全流程：Chase → SpitWindup → 酸区落地 ---")
+	# --- ② 关闭的安全门阻断技能；开门取得 LOS 后完成吐酸 ---
+	_log_line("--- ② 隔门不吐酸 → 开门取得 LOS → SpitWindup → 酸区落地 ---")
+	_check(not _has_world_line(spitter, player), "初始 12m 合法射程被关闭的安全门遮挡")
+	var blocked_windup := false
+	for i in 12:
+		await create_timer(0.1).timeout
+		blocked_windup = blocked_windup or int(ai.get("state")) == S_SPIT_WINDUP
+	_check(not blocked_windup, "隔门阶段不进入 SpitWindup")
+	_check(get_nodes_in_group("acid_pools").is_empty(), "隔门阶段不生成穿墙酸液区")
+	door.call("door_opened")
+	await physics_frame
+	await physics_frame
+	_check(_has_world_line(spitter, player), "开门后喷吐者与玩家形成真实世界 LOS")
 	var saw_windup := false
 	var saw_pool := false
 	var pool: Node = null
@@ -194,6 +207,17 @@ func _find_player(main: Node) -> Node3D:
 		if p.get_node_or_null("Health") != null:
 			return p as Node3D
 	return null
+
+
+func _has_world_line(enemy: Node3D, player: Node3D) -> bool:
+	var from := enemy.global_position + Vector3.UP * 0.8
+	var to := player.global_position + Vector3.UP * 0.8
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1, [enemy.get_rid()])
+	var hit := enemy.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return true
+	var collider := hit.get("collider") as Node
+	return collider == player or (collider != null and player.is_ancestor_of(collider))
 
 
 ## 直接实例化喷吐者（不经过 WaveManager，便于行为测试；服务器权威单机语义）

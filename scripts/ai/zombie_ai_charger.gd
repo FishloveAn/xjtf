@@ -116,11 +116,13 @@ func _tick_chase(delta: float) -> void:
 		_try_melee()
 	if _melee_timer > 0.0:
 		_melee_timer = maxf(_melee_timer - delta, 0.0)
-	# 冲撞条件：冷却就绪 + 距离 [min_range, range] + 目标存活 + 朝向夹角小（目标在正前方直线）
+	# 取得无遮挡冲撞线后先从路径朝向转向目标，再按原有正前方夹角进入蓄力。
 	if _cooldown_timer <= 0.0 and dist >= _charge_min_range and dist <= _charge_range \
-			and _target_alive() and _is_aligned():
-		_start_windup()
-		return
+			and _target_alive() and _has_world_line_to(_target):
+		_face_charge_target()
+		if _is_aligned():
+			_start_windup()
+			return
 	if _cooldown_timer > 0.0:
 		_cooldown_timer = maxf(_cooldown_timer - delta, 0.0)
 	# 简化导航（同普通丧尸）：1s 重算朝向，直线移动 + 撞墙物理
@@ -240,15 +242,22 @@ func _is_aligned() -> bool:
 	return rad_to_deg(fwd.angle_to(to.normalized())) <= ALIGN_ANGLE_DEG
 
 
-## 每 1s 重算一次朝向与移动方向（简化导航：直线推进，不寻路）
-func _recompute_direction() -> void:
-	if _target == null:
-		return
+func _face_charge_target() -> void:
 	var to := _target.global_position - _body.global_position
 	to.y = 0.0
 	if to.length_squared() < 0.0001:
 		return
 	var dir := to.normalized()
+	_body.rotation.y = atan2(-dir.x, -dir.z)
+
+
+## 每 1s 重算一次朝向；有 NavMesh 时沿路径追击，冲撞阶段仍保持锁定直线语义。
+func _recompute_direction() -> void:
+	if _target == null:
+		return
+	var dir := _navigation_direction(_target.global_position, _attack_range)
+	if dir.length_squared() < 0.0001:
+		return
 	_move_dir = dir
 	_body.rotation.y = atan2(-dir.x, -dir.z)  # 让 -z 朝向目标
 

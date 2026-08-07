@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "note": "音频事件表（2026-08-07 系统设计 v1）。事件→播放参数全数据驱动，改本文件重启生效（SfxPool 启动时加载）。字段说明见 项目文档/02-设计/02-设计-音频-系统设计.md §5。files 相对 assets/audio/；播放时随机选一变体；素材缺失自动静默（就位即生效）。rifle_fire/smg_fire 当前借用手枪占位素材 + pitch 区分音色（正式 freesound CC0 枪声入库后替换 files 即可）；footstep_*/player_*/door_*/pickup_*/aim/switch/ui_* 为预留事件（无素材静默），素材按命名规范入库即出声。",
+  "events": {
+    "pistol_fire": {
+      "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
+      "files": ["sfx/sfx_weapon_pistol_fire_01.ogg", "sfx/sfx_weapon_pistol_fire_02.ogg", "sfx/sfx_weapon_pistol_fire_03.ogg"],
+      "pitch": [0.97, 1.03], "volume_db": 0.0, "max_distance": 60.0,
+      "note": "手枪：短促中高频（占位 impactMetal 打击层）"
+    },
+    "shotgun_fire": {
+      "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
+      "files": ["sfx/sfx_weapon_shotgun_fire_01.ogg", "sfx/sfx_weapon_shotgun_fire_02.ogg", "sfx/sfx_weapon_shotgun_fire_03.ogg"],
+      "pitch": [0.78, 0.86], "volume_db": 1.0, "max_distance": 60.0,
+      "note": "霰弹：厚重低频爆炸感，降调最重、音量最高"
+    },
+    "rifle_fire": {
+      "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
+      "files": ["sfx/sfx_weapon_pistol_fire_01.ogg", "sfx/sfx_weapon_pistol_fire_02.ogg", "sfx/sfx_weapon_pistol_fire_03.ogg"],
+      "pitch": [0.90, 0.96], "volume_db": -1.0, "max_distance": 60.0,
+      "note": "步枪：中低频连发（占位借用手枪素材；正式素材替换为 sfx_weapon_rifle_fire_01~03.ogg）"
+    },
+    "smg_fire": {
+      "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
+      "files": ["sfx/sfx_weapon_pistol_fire_01.ogg", "sfx/sfx_weapon_pistol_fire_02.ogg", "sfx/sfx_weapon_pistol_fire_03.ogg"],
+      "pitch": [1.04, 1.10], "volume_db": -2.0, "max_distance": 60.0,
+      "note": "冲锋枪：轻快高频连发（占位借用；正式素材替换为 sfx_weapon_smg_fire_01~03.ogg）"
+    },
+    "pistol_reload_start": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -1.0, "max_distance": 40.0
+    },
+    "pistol_reload_done": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_done_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -1.0, "max_distance": 40.0
+    },
+    "pistol_empty": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_empty_01.ogg"], "pitch": 1.0, "volume_db": 0.0, "max_distance": 40.0
+    },
+    "shotgun_reload_start": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_01.ogg"], "pitch": [0.88, 0.95], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "霰弹换弹降调更低沉（机械质感区分）"
+    },
+    "shotgun_reload_done": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_done_01.ogg"], "pitch": [0.88, 0.95], "volume_db": -1.0, "max_distance": 40.0
+    },
+    "shotgun_empty": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_empty_01.ogg"], "pitch": 0.95, "volume_db": 0.0, "max_distance": 40.0
+    },
+    "rifle_reload_start": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_01.ogg"], "pitch": [1.0, 1.08], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "步枪换弹偏清脆"
+    },
+    "rifle_reload_done": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_done_01.ogg"], "pitch": [1.0, 1.08], "volume_db": -1.0, "max_distance": 40.0
+    },
+    "rifle_empty": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_empty_01.ogg"], "pitch": 1.0, "volume_db": 0.0, "max_distance": 40.0
+    },
+    "smg_reload_start": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_01.ogg"], "pitch": [1.05, 1.12], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "冲锋枪换弹最轻快"
+    },
+    "smg_reload_done": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_done_01.ogg"], "pitch": [1.05, 1.12], "volume_db": -1.0, "max_distance": 40.0
+    },
+    "smg_empty": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_empty_01.ogg"], "pitch": 1.0, "volume_db": 0.0, "max_distance": 40.0
+    },
+    "weapon_switch": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_switch_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 20.0,
+      "note": "切枪（举起/收起，本地手感音，近距衰减）"
+    },
+    "weapon_aim_in": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_aim_in_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 15.0,
+      "note": "举枪瞄准（预留：ADS 玩法接入后触发，当前静默）"
+    },
+    "weapon_aim_out": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_aim_out_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 15.0,
+      "note": "收枪（预留：ADS 玩法接入后触发，当前静默）"
+    },
+    "weapon_reload": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "通用换弹开始（旧调用兼容保留）"
+    },
+    "weapon_reload_done": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_reload_done_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "通用上膛完成（旧调用兼容保留）"
+    },
+    "weapon_empty": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_weapon_empty_01.ogg"], "pitch": 1.0, "volume_db": 0.0, "max_distance": 40.0,
+      "note": "通用空仓点击（旧调用兼容保留）"
+    },
+    "footstep_concrete": {
+      "mode": "3d", "bus": "SFX", "priority": 60, "limit": 4,
+      "files": ["sfx/sfx_footstep_concrete_01.ogg", "sfx/sfx_footstep_concrete_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -8.0, "max_distance": 20.0,
+      "note": "水泥地脚步（rustyard 默认地面材质）"
+    },
+    "footstep_metal": {
+      "mode": "3d", "bus": "SFX", "priority": 60, "limit": 4,
+      "files": ["sfx/sfx_footstep_metal_01.ogg", "sfx/sfx_footstep_metal_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -8.0, "max_distance": 20.0,
+      "note": "金属板脚步（材质名含 metal 触发）"
+    },
+    "footstep_dirt": {
+      "mode": "3d", "bus": "SFX", "priority": 60, "limit": 4,
+      "files": ["sfx/sfx_footstep_dirt_01.ogg", "sfx/sfx_footstep_dirt_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -8.0, "max_distance": 20.0,
+      "note": "泥土脚步（材质名含 dirt/soil/sand 触发）"
+    },
+    "player_jump": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_player_jump_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -6.0, "max_distance": 15.0
+    },
+    "player_land": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_player_land_01.ogg", "sfx/sfx_player_land_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -4.0, "max_distance": 20.0
+    },
+    "player_down": {
+      "mode": "3d", "bus": "SFX", "priority": 80, "limit": 2,
+      "files": ["sfx/sfx_player_down_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 30.0,
+      "note": "倒地（ALIVE→DOWN，撞击+闷哼）"
+    },
+    "player_die": {
+      "mode": "3d", "bus": "SFX", "priority": 90, "limit": 2,
+      "files": ["sfx/sfx_player_die_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -1.0, "max_distance": 40.0,
+      "note": "死亡（DOWN→DEAD）"
+    },
+    "player_revive": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_player_revive_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 25.0
+    },
+    "player_roll": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_player_roll_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -4.0, "max_distance": 20.0,
+      "note": "翻滚（预留：翻滚玩法接入后触发，当前静默）"
+    },
+    "player_hurt": {
+      "mode": "3d", "bus": "SFX", "priority": 80, "limit": 2,
+      "files": ["sfx/sfx_player_hurt_01.ogg", "sfx/sfx_player_hurt_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -4.0, "max_distance": 15.0,
+      "note": "玩家受击（体感声，只播给本人，近距）"
+    },
+    "door_open": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_door_open_01.ogg", "sfx/sfx_door_open_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 30.0
+    },
+    "door_close": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_door_close_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 30.0,
+      "note": "关门（预留：双向门玩法接入后触发，当前静默）"
+    },
+    "switch_toggle": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_switch_toggle_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 15.0,
+      "note": "开关（预留：场景开关接入示例见系统设计文档 §7.3）"
+    },
+    "button_press": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_button_press_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 15.0,
+      "note": "按钮（预留）"
+    },
+    "mechanism": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_mechanism_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 30.0,
+      "note": "机关/重型机械启动（预留）"
+    },
+    "pickup_ammo": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_pickup_ammo_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 15.0,
+      "note": "拾取弹药（掉落物/补给点共用）"
+    },
+    "pickup_health": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_pickup_health_01.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 15.0,
+      "note": "拾取医疗（掉落物/补给点共用）"
+    },
+    "zombie_growl": {
+      "mode": "3d", "bus": "SFX", "priority": 60, "limit": 4,
+      "files": ["sfx/sfx_zombie_growl_01.ogg"], "pitch": [0.55, 0.75], "volume_db": 0.0, "max_distance": 40.0,
+      "note": "丧尸嘶吼（重击素材降调模拟低频咆哮）"
+    },
+    "zombie_hurt": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 4,
+      "files": ["sfx/sfx_zombie_hurt_01.ogg", "sfx/sfx_zombie_hurt_02.ogg", "sfx/sfx_zombie_hurt_03.ogg"],
+      "pitch": [0.95, 1.05], "volume_db": -3.0, "max_distance": 30.0
+    },
+    "zombie_died": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 4,
+      "files": ["sfx/sfx_zombie_died_01.ogg", "sfx/sfx_zombie_died_02.ogg", "sfx/sfx_zombie_died_03.ogg"],
+      "pitch": [0.95, 1.05], "volume_db": -2.0, "max_distance": 40.0
+    },
+    "zombie_attack_hint": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_zombie_attack_hint_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -3.0, "max_distance": 25.0,
+      "note": "丧尸近战攻击预警（预留：AI 攻击前摇接入，当前静默）"
+    },
+    "charge_windup": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_charge_windup_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
+      "note": "冲撞者蓄力（占位，素材未到静默）"
+    },
+    "charger_hit": {
+      "mode": "3d", "bus": "SFX", "priority": 80, "limit": 2,
+      "files": ["sfx/sfx_charger_hit_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -1.0, "max_distance": 30.0,
+      "note": "冲撞者命中（占位）"
+    },
+    "charger_death": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_charger_death_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
+      "note": "冲撞者死亡（占位）"
+    },
+    "spit_windup": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_spit_windup_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -3.0, "max_distance": 35.0,
+      "note": "喷吐者吐酸前摇（占位）"
+    },
+    "acid_land": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_acid_land_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 25.0,
+      "note": "酸液落地（占位）"
+    },
+    "spitter_death": {
+      "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
+      "files": ["sfx/sfx_spitter_death_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
+      "note": "喷吐者死亡（占位）"
+    },
+    "hit_confirm": {
+      "mode": "3d", "bus": "SFX", "priority": 50, "limit": 4,
+      "files": ["sfx/sfx_hit_confirm_01.ogg", "sfx/sfx_hit_confirm_02.ogg", "sfx/sfx_hit_confirm_03.ogg"],
+      "pitch": [0.95, 1.05], "volume_db": -6.0, "max_distance": 20.0,
+      "note": "命中确认（短促噗/啪，可被枪声让位）"
+    },
+    "wave_alarm": {
+      "mode": "2d", "bus": "SFX", "priority": 90, "limit": 2,
+      "files": ["sfx/sfx_wave_alarm_01.ogg"], "pitch": [0.85, 0.95], "volume_db": 0.0,
+      "note": "尸潮警报（2D 全局非定位，全端）"
+    },
+    "ui_confirm": {
+      "mode": "2d", "bus": "UI", "priority": 60, "limit": 2,
+      "files": ["sfx/sfx_ui_confirm_01.ogg"], "pitch": [0.95, 1.05], "volume_db": 0.0,
+      "note": "菜单确认（预留：hud/lobby 接入示例见系统设计文档 §7.4）"
+    },
+    "ui_cancel": {
+      "mode": "2d", "bus": "UI", "priority": 60, "limit": 2,
+      "files": ["sfx/sfx_ui_cancel_01.ogg"], "pitch": [0.95, 1.05], "volume_db": 0.0,
+      "note": "菜单取消（预留）"
+    },
+    "ui_click": {
+      "mode": "2d", "bus": "UI", "priority": 60, "limit": 4,
+      "files": ["sfx/sfx_ui_click_01.ogg", "sfx/sfx_ui_click_02.ogg"], "pitch": [0.95, 1.05], "volume_db": -3.0,
+      "note": "菜单导航点击（预留）"
+    },
+    "ui_denied": {
+      "mode": "2d", "bus": "UI", "priority": 60, "limit": 2,
+      "files": ["sfx/sfx_ui_denied_01.ogg"], "pitch": [0.95, 1.05], "volume_db": 0.0,
+      "note": "操作拒绝（预留：如切枪但无该武器）"
+    }
+  }
+}

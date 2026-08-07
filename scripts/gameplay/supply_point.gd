@@ -74,9 +74,11 @@ func _grant(player: Node3D) -> void:
 				state.apply_healing(HEALTH_AMOUNT)  # 回血/救起（HealthSync 自动广播）
 
 
-## [authority] 服务器→所有人：补给点已用，所有端本地消失（MVP：消失，Intermission 重刷）
+## [authority] 服务器→所有人：补给点已用，所有端本地消失 + 拾取音（MVP：消失，Intermission 重刷）
 @rpc("authority", "call_local", "reliable")
 func pickup_used() -> void:
+	var event := "pickup_health" if supply_type == Type.HEALTH else "pickup_ammo"
+	SfxPool.play_3d(event, global_position)  # 拾取音（全端执行时各端本地播）
 	queue_free()
 
 

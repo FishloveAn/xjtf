@@ -15,6 +15,7 @@ const ATTACK_WINDUP := 0.5       # 秒，前摇（表现由 S6 接）
 const ATTACK_COOLDOWN := 1.0     # 秒，攻击冷却
 const RETARGET_INTERVAL := 1.5   # 秒，重算朝向/移动方向（简化导航）
 const MOVE_SPEED := 3.0          # 米/秒，追踪速度
+const AVOID_SECONDS := 2.0       # 无导航网格时沿碰撞面绕行的最长时间
 const DEATH_FADE_TIME := 0.6     # 秒，死亡后 Visual 缩放淡出
 const DEATH_CLEANUP_DELAY := 1.5 # 秒，死亡后清理（M2-S3a：延迟到回池，防泄漏）
 const COLLISION_LAYER := 4       # 身体碰撞层（敌人层，M1-S5 碰撞层方案）
@@ -28,6 +29,9 @@ var _move_dir := Vector3.FORWARD
 var _retarget_timer := 0.0
 var _attack_cooldown := 0.0
 var _windup_timer := 0.0
+var _navigation_agent: NavigationAgent3D = null
+var _avoid_dir := Vector3.ZERO
+var _avoid_timer := 0.0
 
 ## 死亡表现/清理 tween 引用：回池时须 kill，防淡出/清理计时作用于复活的丧尸（M2-S3a）
 var _fade_tween: Tween = null
@@ -38,10 +42,16 @@ static var _ai_last_frame := 0
 static var _ai_updated_this_frame := 0
 
 
+func _enter_tree() -> void:
+	_body = get_parent() as CharacterBody3D
+	_setup_sync()
+
+
 func _ready() -> void:
 	_body = get_parent() as CharacterBody3D
 	if _body == null:
 		return
+	_ensure_navigation_agent()
 	_ensure_growl_ctrl()  # M3-S7：嘶吼控制器挂接（幂等：复用节点仅重设随机相位）
 	var health := get_node_or_null("../Health") as Damageable
 	# 幂等（M3-S1 回归）：request_ready 每次重跑，died 连接/同步器配置须判重（防重复回池）
@@ -49,7 +59,6 @@ func _ready() -> void:
 		health.died.connect(_on_died)
 	ZombieAIBudget.ensure_loaded()  # 分帧预算参数（director.json ai_budget，M3-S4）
 	_apply_visibility_range()
-	_setup_sync()
 
 
 func _physics_process(delta: float) -> void:
@@ -92,9 +101,14 @@ func _tick_chase(delta: float) -> void:
 		state = State.ATTACK
 		_windup_timer = ATTACK_WINDUP
 		return
-	# 简化导航：按缓存方向直线移动，每 1.5s 重算朝向/方向（不寻路）
-	_retarget_timer -= delta
-	if _retarget_timer <= 0.0:
+	# 有导航网格时每个物理帧推进路径；旧关卡回退每 1.5s 更新直线/绕障方向。
+	_avoid_timer = maxf(_avoid_timer - delta, 0.0)
+	var has_navigation := _has_navigation_map()
+	if has_navigation:
+		_recompute_direction()
+	else:
+		_retarget_timer -= delta
+	if not has_navigation and _retarget_timer <= 0.0:
 		_retarget_timer = RETARGET_INTERVAL
 		_recompute_direction()
 	_body.velocity.x = _move_dir.x * MOVE_SPEED
@@ -103,6 +117,7 @@ func _tick_chase(delta: float) -> void:
 		# get_gravity().y 为负，必须 **加** 才向下加速（M1-ZOMBIE 反重力根因 f5ac73c）
 		_body.velocity.y = _body.velocity.y + _body.get_gravity().y * delta
 	_body.move_and_slide()
+	_update_collision_avoidance()
 
 
 func _tick_attack(delta: float) -> void:
@@ -161,17 +176,82 @@ func _get_target_health() -> PlayerState:
 	return _target.get_node_or_null("Health") as PlayerState
 
 
-## 每 RETARGET_INTERVAL 重算一次朝向与移动方向（简化导航：直线推进，不寻路）
+## 导航网格存在时取下一路径点；否则使用直线方向和局部碰撞绕障。
 func _recompute_direction() -> void:
 	if _target == null:
 		return
-	var to := _target.global_position - _body.global_position
+	var destination := _target.global_position
+	if _has_navigation_map():
+		_navigation_agent.target_position = destination
+		if not _navigation_agent.is_navigation_finished():
+			destination = _navigation_agent.get_next_path_position()
+	elif _avoid_timer > 0.0:
+		if _has_clear_path_to_target():
+			_avoid_timer = 0.0
+		else:
+			_set_move_direction(_avoid_dir)
+			return
+	var to := destination - _body.global_position
 	to.y = 0.0
 	if to.length_squared() < 0.0001:
 		return
-	var dir := to.normalized()
+	_set_move_direction(to.normalized())
+
+
+func _set_move_direction(dir: Vector3) -> void:
 	_move_dir = dir
 	_body.rotation.y = atan2(-dir.x, -dir.z)  # 让 -z 朝向目标
+
+
+## 有导航网格时使用 NavigationAgent3D；当前关卡无网格时由碰撞绕障回退接管。
+func _ensure_navigation_agent() -> void:
+	_navigation_agent = _body.get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+	if _navigation_agent == null:
+		_navigation_agent = NavigationAgent3D.new()
+		_navigation_agent.name = "NavigationAgent3D"
+		_body.call_deferred("add_child", _navigation_agent)
+	_navigation_agent.path_desired_distance = 0.4
+	_navigation_agent.target_desired_distance = ATTACK_RANGE
+	_navigation_agent.radius = 0.4
+	_navigation_agent.height = 1.7
+
+
+func _has_navigation_map() -> bool:
+	if _navigation_agent == null or not _navigation_agent.is_inside_tree():
+		return false
+	var map_rid := _navigation_agent.get_navigation_map()
+	return map_rid.is_valid() and not NavigationServer3D.map_get_regions(map_rid).is_empty()
+
+
+## 记录撞墙后的切线方向。这个回退只负责现有没有 NavMesh 的旧关卡，避免有限墙永久卡死。
+func _update_collision_avoidance() -> void:
+	if _has_navigation_map() or _body.get_slide_collision_count() == 0:
+		return
+	for i in _body.get_slide_collision_count():
+		var normal := _body.get_slide_collision(i).get_normal()
+		normal.y = 0.0
+		if normal.length_squared() < 0.25 or _move_dir.dot(normal) >= -0.1:
+			continue
+		normal = normal.normalized()
+		var tangent_a := normal.cross(Vector3.UP).normalized()
+		var tangent_b := -tangent_a
+		var probe_distance := 1.5
+		var target_pos := _target.global_position if _target != null else _body.global_position
+		var distance_a := (_body.global_position + tangent_a * probe_distance).distance_squared_to(target_pos)
+		var distance_b := (_body.global_position + tangent_b * probe_distance).distance_squared_to(target_pos)
+		_avoid_dir = tangent_a if distance_a <= distance_b else tangent_b
+		_avoid_timer = AVOID_SECONDS
+		_retarget_timer = 0.0
+		return
+
+
+func _has_clear_path_to_target() -> bool:
+	if _target == null or _body.get_world_3d() == null:
+		return false
+	var from := _body.global_position + Vector3.UP * 0.8
+	var to := _target.global_position + Vector3.UP * 0.8
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1, [_body.get_rid()])
+	return _body.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
 ## 死亡（服务器 Health.died）：进 Dead 并广播 zombie_died（所有端播死亡表现 + 清理）；
@@ -248,6 +328,8 @@ func reset_for_pool() -> void:
 	_retarget_timer = 0.0
 	_attack_cooldown = 0.0
 	_windup_timer = 0.0
+	_avoid_dir = Vector3.ZERO
+	_avoid_timer = 0.0
 	_kill_death_tweens()
 	set_physics_process(true)  # _on_died 里关掉了，复活必须恢复
 	_body.collision_layer = COLLISION_LAYER
