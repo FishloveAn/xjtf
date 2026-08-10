@@ -13,6 +13,8 @@ extends CharacterBody3D
 
 const WALK_SPEED := 5.0       # 米/秒，移动速度
 const JUMP_VELOCITY := 4.5    # 米/秒，起跳初速度
+const WORLD_RENDER_LAYER := 1
+const VIEW_RENDER_LAYER := 1 << 1
 
 ## 脚步/跳跃/落地音频（系统设计 02-设计-音频-系统设计.md §7.2）
 const STEP_INTERVAL_WALK := 0.50   # 秒/步（行走步频）
@@ -40,6 +42,7 @@ const _WEAPON_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 
 ## WeaponPivot 下的武器列表（S4：数字键切枪；列表顺序=切枪顺序）
 var _weapons: Array[WeaponBase] = []
+var _view_meshes: Array[Node3D] = []
 var _current_weapon_index := 0
 ## 左键按住状态（M3-S1 自动武器连发）：按下置 true、松开置 false；轮询只对 auto 武器开火
 var _fire_held := false
@@ -51,6 +54,7 @@ var _fall_speed := 0.0
 
 func _ready() -> void:
 	add_to_group("players")  # HUD 等按组找本地玩家（tech-plan §8.4 用组代替长引用链）
+	_configure_weapon_visuals()
 	_collect_weapons()
 	_place_at_spawn_point()
 	if is_multiplayer_authority():
@@ -270,16 +274,50 @@ func _find_nearby_pickup() -> PickupItem:
 	return best
 
 
-## 收集 WeaponPivot 下的武器（顺序即数字键 1/2 切枪顺序），默认激活第 0 把
-func _collect_weapons() -> void:
-	_weapons.clear()
+## 配置第一人称与第三人称武器表现。可见性只在各 peer 本地决定，不进入同步状态。
+func _configure_weapon_visuals() -> void:
+	var owned_locally := is_multiplayer_authority()
+	var view_root := get_node_or_null("Head/Camera/ViewMesh") as Node3D
+	if view_root != null:
+		view_root.visible = owned_locally
+		_configure_geometry(view_root, VIEW_RENDER_LAYER, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	var pivot := get_node_or_null("WeaponPivot")
 	if pivot == null:
 		return
 	for child in pivot.get_children():
+		var weapon := child as WeaponBase
+		if weapon == null:
+			continue
+		var world_mesh := weapon.get_node_or_null("WorldMesh") as Node3D
+		if world_mesh == null:
+			continue
+		world_mesh.visible = not owned_locally
+		_configure_geometry(world_mesh, WORLD_RENDER_LAYER, GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
+
+
+func _configure_geometry(root: Node, render_layer: int, shadow_setting: int) -> void:
+	for child in root.get_children():
+		if child is GeometryInstance3D:
+			var geometry := child as GeometryInstance3D
+			geometry.layers = render_layer
+			geometry.cast_shadow = shadow_setting as GeometryInstance3D.ShadowCastingSetting
+		_configure_geometry(child, render_layer, shadow_setting)
+
+
+## 收集 WeaponPivot 下的逻辑武器，并按同名节点关联 Camera/ViewMesh，默认激活第 0 把。
+func _collect_weapons() -> void:
+	_weapons.clear()
+	_view_meshes.clear()
+	var pivot := get_node_or_null("WeaponPivot")
+	if pivot == null:
+		return
+	var view_root := get_node_or_null("Head/Camera/ViewMesh")
+	for child in pivot.get_children():
 		var w := child as WeaponBase
 		if w != null:
 			_weapons.append(w)
+			var view_mesh := view_root.get_node_or_null(String(w.name)) as Node3D if view_root != null else null
+			_view_meshes.append(view_mesh)
 	_set_active_weapon(0)
 
 
@@ -293,6 +331,8 @@ func _set_active_weapon(index: int) -> void:
 	_current_weapon_index = index
 	for i in _weapons.size():
 		_weapons[i].visible = (i == index)
+		if i < _view_meshes.size() and _view_meshes[i] != null:
+			_view_meshes[i].visible = (i == index)
 
 
 ## 从检查点恢复当前武器和各武器弹匣；仅服务器在玩家 ready 后调用。

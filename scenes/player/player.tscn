@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/player_state.gd" id="2_player_state"]
@@ -7,6 +7,10 @@
 [ext_resource type="PackedScene" path="res://scenes/weapons/rifle.tscn" id="5_rifle"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/smg.tscn" id="6_smg"]
 [ext_resource type="PackedScene" path="res://assets/models/characters/char_player_01.glb" id="7_player_glb"]
+[ext_resource type="PackedScene" path="res://assets/models/weapons/wep_pistol_01.glb" id="8_pistol_glb"]
+[ext_resource type="PackedScene" path="res://assets/models/weapons/wep_shotgun_01.glb" id="9_shotgun_glb"]
+[ext_resource type="PackedScene" path="res://assets/models/weapons/wep_rifle_01.glb" id="10_rifle_glb"]
+[ext_resource type="PackedScene" path="res://assets/models/weapons/wep_smg_01.glb" id="11_smg_glb"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
 radius = 0.4
@@ -19,10 +23,29 @@ script = ExtResource("1_player")
 position = Vector3(0, 1.6, 0)
 
 [node name="Camera" type="Camera3D" parent="Head"]
+cull_mask = 3
+
+[node name="ViewMesh" type="Node3D" parent="Head/Camera"]
+
+[node name="Pistol" parent="Head/Camera/ViewMesh" instance=ExtResource("8_pistol_glb")]
+position = Vector3(0.22, -0.18, -0.32)
+rotation = Vector3(0, 3.14159, 0)
+
+[node name="Shotgun" parent="Head/Camera/ViewMesh" instance=ExtResource("9_shotgun_glb")]
+position = Vector3(0.2, -0.22, -0.55)
+rotation = Vector3(0, 3.14159, 0)
+
+[node name="Rifle" parent="Head/Camera/ViewMesh" instance=ExtResource("10_rifle_glb")]
+position = Vector3(0.22, -0.25, -0.5)
+rotation = Vector3(0, 3.14159, 0)
+
+[node name="SMG" parent="Head/Camera/ViewMesh" instance=ExtResource("11_smg_glb")]
+position = Vector3(0.22, -0.22, -0.42)
+rotation = Vector3(0, 3.14159, 0)
 
 [node name="Body" parent="." instance=ExtResource("7_player_glb")]
-position = Vector3(0, 0.9, 0)
-scale = Vector3(0.578, 0.578, 0.578)
+rotation = Vector3(0, 3.14159, 0)
+scale = Vector3(1, 1, 1)
 
 [node name="Collision" type="CollisionShape3D" parent="."]
 position = Vector3(0, 0.9, 0)

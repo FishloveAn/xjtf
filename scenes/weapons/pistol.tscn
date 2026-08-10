@@ -6,7 +6,6 @@
 [node name="Pistol" instance=ExtResource("1_weapon_base")]
 weapon_id = "pistol"
 
-[node name="Visual" parent="." instance=ExtResource("2_pistol_glb")]
+[node name="WorldMesh" parent="." instance=ExtResource("2_pistol_glb")]
 rotation = Vector3(0, 3.14159, 0)
 position = Vector3(0, -0.02, -0.275)
-
