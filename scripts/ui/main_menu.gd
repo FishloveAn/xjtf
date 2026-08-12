@@ -43,34 +43,43 @@ func _show_save_status() -> void:
 
 
 func _on_host_pressed() -> void:
+	SfxPool.play_2d("ui_click")
 	GameState.request_checkpoint_resume(false)
 	var port := int(_port_edit.text)
 	var err := NetworkManager.create_host(port)
 	if err == OK:
+		SfxPool.play_2d("ui_confirm")
 		get_tree().change_scene_to_file(LOBBY_SCENE)
 	else:
+		SfxPool.play_2d("ui_denied")
 		_show_status("创建主机失败：端口被占用或绑定错误")  # B9
 
 
 func _on_continue_pressed() -> void:
+	SfxPool.play_2d("ui_click")
 	GameState.request_checkpoint_resume(false)
 	if not CheckpointManager.has_progress(checkpoint_path):
+		SfxPool.play_2d("ui_denied")
 		_show_status("没有可继续的有效存档")
 		return
 	var port := int(_port_edit.text)
 	if port < 0 or port > 65535:
+		SfxPool.play_2d("ui_denied")
 		_show_status("继续游戏失败：端口必须在 0 到 65535 之间")
 		return
 	var err := NetworkManager.create_host(port)
 	if err == OK:
+		SfxPool.play_2d("ui_confirm")
 		GameState.checkpoint_path = checkpoint_path
 		GameState.request_checkpoint_resume(true)
 		get_tree().change_scene_to_file(LOBBY_SCENE)
 	else:
+		SfxPool.play_2d("ui_denied")
 		_show_status("继续游戏失败：端口被占用或绑定错误")
 
 
 func _on_join_pressed() -> void:
+	SfxPool.play_2d("ui_click")
 	GameState.request_checkpoint_resume(false)
 	var ip := _ip_edit.text.strip_edges()
 	var port := int(_port_edit.text)
@@ -79,14 +88,17 @@ func _on_join_pressed() -> void:
 		# 发起成功，最终结果由信号决定
 		_show_status("正在连接 %s:%d ..." % [ip, port])
 	else:
+		SfxPool.play_2d("ui_denied")
 		_show_status("加入失败：IP 或端口参数错误")
 
 
 func _on_connected_to_server() -> void:
+	SfxPool.play_2d("ui_confirm")
 	get_tree().change_scene_to_file(LOBBY_SCENE)
 
 
 func _on_connection_failed() -> void:
+	SfxPool.play_2d("ui_denied")
 	_show_status("连接失败：无法连接到目标主机")
 
 

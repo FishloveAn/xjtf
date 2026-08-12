@@ -90,7 +90,7 @@ func _check_one(path: String) -> void:
 	var errors := []
 
 	# 1) tris 预算
-	if budget != null:
+	if not budget.is_empty():
 		if info.tris > budget[1]:
 			errors.append("tris=%d 超出预算上限 %d (%s)" % [info.tris, budget[1], budget[2]])
 	elif info.tris <= 0:

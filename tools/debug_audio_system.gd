@@ -4,38 +4,16 @@ extends SceneTree
 ## 验证：
 ##   B1 事件表加载：data/audio_events.json 解析成功，事件数 + 三大类关键事件存在
 ##   B2 字段合法性：files 非空数组 / mode / bus / pitch / volume / max_distance / limit 合法
-##   B3 播放冒烟：素材存在事件 → 播放器 stream 命中目标文件；素材缺失事件 → 静默不报错
+##   B3 播放冒烟：全部事件引用的素材存在，且播放器 stream 命中目标文件
 ##   B4 变体随机：多文件事件跨帧多次播放 → 出现 ≥2 个不同文件
 ##   B5 同帧限流：同帧连发 N 次 → 实际 ≤ 事件 limit
 ##   B6 接入点实测：换弹链（pistol_reload_start/done/empty）、门开（door_open 事件注册 + 调用无异常）、
 ##      拾取（pickup_ammo/pickup_health 事件注册 + 调用无异常）、玩家倒地（player_hurt 素材命中 + down 事件注册）
+##   B7 关键接线覆盖：已有玩法优先事件在 scripts/scenes/autoload 中存在数据驱动调用
 ## 注意：--script 工具脚本不静态引用游戏类（M2-S3 铁律），一律动态访问；
 ##       素材播放检查用「播放器.stream 是否命中目标文件」而非 is_playing（规避短音效已播完时序）
 
 const MAIN_SCENE := "res://scenes/main/main.tscn"
-## 素材已就位的事件（Kenney 入库）→ 目标文件名（验证 stream 命中）
-const READY_EVENTS := {
-	"pistol_fire": "sfx_weapon_pistol_fire_01.ogg",
-	"shotgun_fire": "sfx_weapon_shotgun_fire_01.ogg",
-	"zombie_growl": "sfx_zombie_growl_01.ogg",
-	"zombie_hurt": "sfx_zombie_hurt_01.ogg",
-	"zombie_died": "sfx_zombie_died_01.ogg",
-	"player_hurt": "sfx_player_hurt_01.ogg",
-	"hit_confirm": "sfx_hit_confirm_01.ogg",
-	"pistol_reload_start": "sfx_weapon_reload_01.ogg",
-	"pistol_reload_done": "sfx_weapon_reload_done_01.ogg",
-	"pistol_empty": "sfx_weapon_empty_01.ogg",
-	"wave_alarm": "sfx_wave_alarm_01.ogg",
-}
-## 素材未到位的预留事件（验证事件已注册 + play 静默不报错）
-const RESERVED_EVENTS := [
-	"rifle_reload_start", "smg_reload_done", "weapon_switch", "weapon_aim_in", "weapon_aim_out",
-	"footstep_concrete", "footstep_metal", "footstep_dirt", "player_jump", "player_land",
-	"player_down", "player_die", "player_revive", "player_roll", "door_open", "door_close",
-	"switch_toggle", "button_press", "mechanism", "pickup_ammo", "pickup_health",
-	"ui_confirm", "ui_cancel", "ui_click", "ui_denied",
-]
-
 var _failures := 0
 var _log := FileAccess.open("user://audio_system_test.log", FileAccess.WRITE)
 
@@ -72,6 +50,7 @@ func _run() -> void:
 	await create_timer(0.3).timeout
 	_b4_variant_random(sfx)
 	_b5_frame_limit(sfx)
+	_b7_reference_coverage(sfx)
 
 	# 接入点实测需主场景（玩家/武器/门/掉落物）
 	change_scene_to_file(MAIN_SCENE)
@@ -121,41 +100,29 @@ func _b2_field_validity(sfx: Node) -> void:
 	_check(bad == 0, "事件表字段校验通过（%d 个事件全部合法）" % events.size())
 
 
-## B3 播放冒烟：就绪事件验证 stream 命中；预留事件验证静默不报错。
-## 每事件之间跨帧（await 0.05s）：规避同帧限流（limit=4）误伤连续播放；
-## 命中检查匹配事件表 files 全部候选（播放随机选变体，不能固定查 01 文件）
+## B3 播放冒烟：全部事件引用的文件存在，并能被播放器加载。
 func _b3_play_smoke(sfx: Node) -> void:
 	_log_line("--- B3 播放冒烟 ---")
 	var events: Dictionary = sfx.get("_events")
-	var ready_ok := 0
-	for ev in READY_EVENTS:
+	var loaded := 0
+	for ev in events:
 		var spec: Dictionary = events[ev]
 		var candidates: Array = spec.get("files", [])
-		var exists := false
+		var all_exist := true
 		for f in candidates:
-			if FileAccess.file_exists("res://assets/audio/" + String(f)):
-				exists = true
-				break
-		if not exists:
-			continue  # 素材未入库跳过（不应发生，但容错）
+			if not FileAccess.file_exists("res://assets/audio/" + String(f)):
+				all_exist = false
+				_log_line("  [BAD] %s 缺少素材 %s" % [ev, f])
+		if not all_exist:
+			continue
 		_stop_all_sfx(sfx)
 		sfx.play_3d(ev)
-		await create_timer(0.05).timeout  # 跨帧：同帧第二发 play_2d 不再被 limit 拦截
-		sfx.play_2d(ev)  # 同一事件 2D 入口按 mode 路由，不重复
-		await create_timer(0.05).timeout
+		await create_timer(0.04).timeout
 		if _stream_played_any(sfx, candidates):
-			ready_ok += 1
+			loaded += 1
 		else:
 			_check(false, "事件 %s 变体未命中播放器" % ev)
-	_check(ready_ok >= 10, "就绪事件播放命中（%d/11 素材就位事件全命中）" % ready_ok)
-	var reserved_ok := true
-	for ev in RESERVED_EVENTS:
-		sfx.play_3d(ev)  # 预留事件：事件已注册 + 素材缺失静默（无异常即通过）
-		await create_timer(0.02).timeout
-		sfx.play_2d(ev)
-		await create_timer(0.02).timeout
-	# 静默路径无法直接断言，验证已注册即可（_play 在事件存在时至少走完解析）
-	_check(reserved_ok, "预留事件 play 调用无异常（%d 个，素材就位即出声）" % RESERVED_EVENTS.size())
+	_check(loaded == events.size(), "全部事件播放命中（%d/%d）" % [loaded, events.size()])
 
 
 ## B4 变体随机：跨帧多次播放同一多文件事件 → 出现 ≥2 个不同文件
@@ -184,6 +151,49 @@ func _b5_frame_limit(sfx: Node) -> void:
 	_check(actual <= limit and actual > 0, "同帧 10 连发 → 实际 %d ≤ limit %d" % [actual, limit])
 
 
+## B7 关键接线覆盖：检查事件名仍由玩法代码传给 SfxPool，不把文件路径写进调用方。
+## 武器事件由 weapon_id + 后缀动态派生，因此单独检查四类后缀和事件注册。
+func _b7_reference_coverage(sfx: Node) -> void:
+	_log_line("--- B7 关键接线覆盖 ---")
+	var runtime_text := _collect_runtime_text("res://scripts") \
+		+ _collect_runtime_text("res://scenes") \
+		+ _collect_runtime_text("res://autoload")
+	for event_name in [
+		"pickup_ammo", "pickup_health", "door_open", "weapon_switch",
+	]:
+		_check(runtime_text.contains('"' + event_name + '"'), "%s 已有玩法接线" % event_name)
+	for event_name in ["ui_confirm", "ui_cancel", "ui_click", "ui_denied"]:
+		var call: String = 'SfxPool.play_2d("' + event_name + '")'
+		_check(runtime_text.contains(call), "%s 已有 UI 播放接线" % event_name)
+	_check(runtime_text.contains('_play_sfx("hit_confirm", pos)'), "hit_confirm 已接入服务器确认命中流程")
+	var events: Dictionary = sfx.get("_events")
+	for weapon_id in ["rifle", "smg"]:
+		for suffix in ["_fire", "_reload_start", "_reload_done", "_empty"]:
+			_check(events.has(weapon_id + suffix), "%s%s 动态事件已注册" % [weapon_id, suffix])
+	for suffix in ["_fire", "_reload_start", "_reload_done", "_empty"]:
+		_check(runtime_text.contains('weapon_id + "' + suffix + '"'), "武器%s 使用 weapon_id 动态派生" % suffix)
+
+
+func _collect_runtime_text(dir_path: String) -> String:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return ""
+	var combined := ""
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		var path := dir_path.path_join(entry)
+		if dir.current_is_dir() and not entry.begins_with("."):
+			combined += _collect_runtime_text(path)
+		elif entry.ends_with(".gd") or entry.ends_with(".tscn"):
+			var file := FileAccess.open(path, FileAccess.READ)
+			if file != null:
+				combined += file.get_as_text()
+		entry = dir.get_next()
+	dir.list_dir_end()
+	return combined
+
+
 ## B6 接入点实测（主场景：换弹链 / 门开 / 拾取 / 倒地）
 func _b6_wiring(main: Node, sfx: Node) -> void:
 	_log_line("--- B6 接入点实测 ---")
@@ -200,7 +210,7 @@ func _b6_wiring(main: Node, sfx: Node) -> void:
 		var reload_time: float = weapon.get("reload_time")
 		await create_timer(reload_time + 0.3).timeout
 		_check(_stream_played_any(sfx, ["sfx/sfx_weapon_reload_done_01.ogg"]), "上膛完成 → pistol_reload_done 触发")
-	# B6b 门开：找主场景 Door 调 door_opened()（door_open 事件已注册，素材缺失静默）
+	# B6b 门开：找主场景 Door 调 door_opened()
 	var door := main.get_node_or_null("Level/Rustyard/Door")
 	if door == null:
 		door = _find_by_script(main, "door.gd")
@@ -208,7 +218,7 @@ func _b6_wiring(main: Node, sfx: Node) -> void:
 	if door != null:
 		door.door_opened()
 		await create_timer(0.1).timeout
-		_check(bool(door.get("is_open")), "door_opened() 执行：门开启（door_open 事件已触发，素材缺失静默）")
+		_check(bool(door.get("is_open")), "door_opened() 执行：门开启并触发 door_open")
 	# B6c 拾取：实例化弹药掉落物到玩家附近 → request_pickup 结算 → pickup_sound 广播
 	var player := _find_player(main)
 	_check(player != null, "玩家就位（拾取测试）")
@@ -222,7 +232,7 @@ func _b6_wiring(main: Node, sfx: Node) -> void:
 			pk.request_pickup()
 			await create_timer(0.1).timeout
 			# 拾取结算后服务器 queue_free（M2-S4 坑：已释放实例不可再 get，用 is_instance_valid）
-			_check(not is_instance_valid(pk) or bool(pk.get("used")), "掉落物拾取结算完成（pickup_ammo 已触发，素材缺失静默）")
+			_check(not is_instance_valid(pk) or bool(pk.get("used")), "掉落物拾取结算完成并触发 pickup_ammo")
 	# B6d 玩家倒地：扣血至 DOWN → player_hurt 素材命中 + player_down 事件注册
 	var health := player.get_node_or_null("Health") if player != null else null
 	_check(health != null, "玩家状态节点就位（倒地测试）")
@@ -233,7 +243,7 @@ func _b6_wiring(main: Node, sfx: Node) -> void:
 		await create_timer(0.1).timeout
 		_check(_stream_played_any(sfx, ["sfx/sfx_player_hurt_01.ogg", "sfx/sfx_player_hurt_02.ogg"]), "玩家受击 → player_hurt 触发（素材命中）")
 		var state: int = health.get("state")
-		_check(state == 1, "扣血后进入 DOWN 状态（player_down 事件已触发，素材缺失静默）")
+		_check(state == 1, "扣血后进入 DOWN 状态并触发 player_down")
 
 
 ## 停掉 SfxPool 全部播放器（3D/2D）并清 stream：测试结尾必调，防播放态 OGG 在退出时泄漏

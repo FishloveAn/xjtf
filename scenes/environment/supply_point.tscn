@@ -1,35 +1,15 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/supply_point.gd" id="1_supply"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_ammo"]
-size = Vector3(0.5, 0.4, 0.5)
-
-[sub_resource type="BoxMesh" id="BoxMesh_health"]
-size = Vector3(0.5, 0.4, 0.5)
-
-[sub_resource type="StandardMaterial3D" id="Mat_ammo"]
-albedo_color = Color(1, 0.78, 0.24, 1)
-emission_enabled = true
-emission = Color(1, 0.6, 0.15, 1)
-emission_energy_multiplier = 1.2
-
-[sub_resource type="StandardMaterial3D" id="Mat_health"]
-albedo_color = Color(0.24, 0.86, 0.52, 1)
-emission_enabled = true
-emission = Color(0.24, 0.86, 0.52, 1)
-emission_energy_multiplier = 1.2
+[ext_resource type="PackedScene" path="res://assets/models/props/prop_ammo_01.glb" id="2_ammo"]
+[ext_resource type="PackedScene" path="res://assets/models/props/prop_medkit_01.glb" id="3_medkit"]
 
 [node name="SupplyPoint" type="Node3D"]
 script = ExtResource("1_supply")
 
-[node name="MeshAmmo" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.3, 0)
-mesh = SubResource("BoxMesh_ammo")
-surface_material_override/0 = SubResource("Mat_ammo")
+[node name="MeshAmmo" parent="." instance=ExtResource("2_ammo")]
+scale = Vector3(1.25, 1.25, 1.25)
 
-[node name="MeshHealth" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.3, 0)
-mesh = SubResource("BoxMesh_health")
-surface_material_override/0 = SubResource("Mat_health")
+[node name="MeshHealth" parent="." instance=ExtResource("3_medkit")]
+scale = Vector3(1.25, 1.25, 1.25)
 visible = false

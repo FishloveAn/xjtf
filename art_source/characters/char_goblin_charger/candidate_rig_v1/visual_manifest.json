@@ -1,0 +1,52 @@
+{
+  "asset_name": "char_goblin_charger",
+  "concept_images": [
+    "项目文档/02-设计/怪概念设计/goblin_charger.png"
+  ],
+  "role": "冲撞型特殊敌人",
+  "silhouette": {
+    "height_m": 2.11,
+    "shoulder_to_height": 0.75,
+    "head_to_height": 0.13,
+    "stance": "前倾、低重心"
+  },
+  "required_features": [
+    "超宽肩",
+    "双侧巨拳",
+    "尖耳",
+    "獠牙",
+    "低重心前倾姿态"
+  ],
+  "simplifiable_features": [
+    "细碎皮肤裂纹",
+    "牙齿数量",
+    "手指分节",
+    "肌肉表面小褶皱"
+  ],
+  "palette": {
+    "base": "#E92B08",
+    "accent": "#FF9B22",
+    "emissive": []
+  },
+  "budgets": {
+    "triangles_max": 4000,
+    "materials_max": 2
+  },
+  "rig": {
+    "bones": 12,
+    "animations": ["idle", "walk", "attack", "hurt", "death", "spawn"]
+  },
+  "visual_review": {
+    "front": "pass",
+    "side": "pass",
+    "back": "pass",
+    "game_view": "pass",
+    "animation_deformation": "pass",
+    "notes": [
+      "用户确认第 4 轮静态造型后进入绑定。",
+      "六个代表动作帧已渲染，巨臂、肩部、腿部和面部无脱离或撕裂。",
+      "Godot 4.7 近景、10 米和 20 米截图已确认轮廓、比例与顶点色材质。",
+      "Godot 规格为 3542 tris、1 材质、2.11m、1 个 Skeleton3D。"
+    ]
+  }
+}

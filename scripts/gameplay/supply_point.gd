@@ -25,8 +25,8 @@ const SCENE_PATH := "res://scenes/environment/supply_point.tscn"
 ## 已被拾取（服务器权威：防连点/多人同时抢同一补给点重复结算，F4）
 var used := false
 
-@onready var _mesh_ammo: MeshInstance3D = $MeshAmmo
-@onready var _mesh_health: MeshInstance3D = $MeshHealth
+@onready var _mesh_ammo: Node3D = $MeshAmmo
+@onready var _mesh_health: Node3D = $MeshHealth
 
 
 func _ready() -> void:

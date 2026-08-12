@@ -1,5 +1,5 @@
 ## pickup_item.gd — 丧尸死亡掉落物（M3-S6；复用 S4 补给点拾取管线）
-## 职责：掉落物（弹药/小医疗包）基元占位，发光区分（蓝=弹药、红=医疗）；靠近按 E →
+## 职责：掉落物（弹药/小医疗包）正式低模，发光区分（黄橙=弹药、医疗绿=医疗）；靠近按 E →
 ##       request_pickup（any_peer）→ 服务器校验（来源/距离/已用）→ 结算（补弹药/回血）→
 ##       used 置位 + 服务器 queue_free（MultiplayerSpawner 同步各端消失，双人抢同一掉落只结算一次）
 ## 输入：player_controller E 键（_find_nearby_pickup 找到本点 → request_pickup）；
@@ -33,8 +33,8 @@ var used := false
 var lifetime_s := 30.0
 var _life_timer := 0.0
 
-@onready var _mesh_ammo: MeshInstance3D = $MeshAmmo
-@onready var _mesh_health: MeshInstance3D = $MeshHealth
+@onready var _mesh_ammo: Node3D = $MeshAmmo
+@onready var _mesh_health: Node3D = $MeshHealth
 
 
 func _ready() -> void:

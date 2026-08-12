@@ -132,6 +132,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# Esc 释放鼠标（A5）
 	if event.is_action_pressed("ui_cancel"):
+		SfxPool.play_2d("ui_cancel")
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
 	# 点击窗口重新捕获（A5）：仅鼠标可见（Esc 释放后）时点击才重新捕获；
@@ -277,6 +278,9 @@ func _find_nearby_pickup() -> PickupItem:
 ## 配置第一人称与第三人称武器表现。可见性只在各 peer 本地决定，不进入同步状态。
 func _configure_weapon_visuals() -> void:
 	var owned_locally := is_multiplayer_authority()
+	var body := get_node_or_null("Body") as Node3D
+	if body != null:
+		body.visible = not owned_locally
 	var view_root := get_node_or_null("Head/Camera/ViewMesh") as Node3D
 	if view_root != null:
 		view_root.visible = owned_locally

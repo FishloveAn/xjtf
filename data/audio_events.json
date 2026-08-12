@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "音频事件表（2026-08-07 系统设计 v1）。事件→播放参数全数据驱动，改本文件重启生效（SfxPool 启动时加载）。字段说明见 项目文档/02-设计/02-设计-音频-系统设计.md §5。files 相对 assets/audio/；播放时随机选一变体；素材缺失自动静默（就位即生效）。rifle_fire/smg_fire 当前借用手枪占位素材 + pitch 区分音色（正式 freesound CC0 枪声入库后替换 files 即可）；footstep_*/player_*/door_*/pickup_*/aim/switch/ui_* 为预留事件（无素材静默），素材按命名规范入库即出声。",
+  "note": "音频事件表（2026-08-07 系统设计 v1）。事件→播放参数全数据驱动，改本文件重启生效（SfxPool 启动时加载）。字段说明见 项目文档/02-设计/02-设计-音频-系统设计.md §5。files 相对 assets/audio/；播放时随机选一变体；当前 55 个事件引用的 76 个音频文件均已入库。",
   "events": {
     "pistol_fire": {
       "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
@@ -16,15 +16,15 @@
     },
     "rifle_fire": {
       "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
-      "files": ["sfx/sfx_weapon_pistol_fire_01.ogg", "sfx/sfx_weapon_pistol_fire_02.ogg", "sfx/sfx_weapon_pistol_fire_03.ogg"],
-      "pitch": [0.90, 0.96], "volume_db": -1.0, "max_distance": 60.0,
-      "note": "步枪：中低频连发（占位借用手枪素材；正式素材替换为 sfx_weapon_rifle_fire_01~03.ogg）"
+      "files": ["sfx/sfx_weapon_rifle_fire_01.ogg", "sfx/sfx_weapon_rifle_fire_02.ogg", "sfx/sfx_weapon_rifle_fire_03.ogg"],
+      "pitch": [0.95, 1.02], "volume_db": -1.0, "max_distance": 60.0,
+      "note": "步枪：中低频连发（2026-08-07 程序化合成本源，原创无版权；后续可换 freesound CC0 写实枪声）"
     },
     "smg_fire": {
       "mode": "3d", "bus": "SFX", "priority": 90, "limit": 4,
-      "files": ["sfx/sfx_weapon_pistol_fire_01.ogg", "sfx/sfx_weapon_pistol_fire_02.ogg", "sfx/sfx_weapon_pistol_fire_03.ogg"],
-      "pitch": [1.04, 1.10], "volume_db": -2.0, "max_distance": 60.0,
-      "note": "冲锋枪：轻快高频连发（占位借用；正式素材替换为 sfx_weapon_smg_fire_01~03.ogg）"
+      "files": ["sfx/sfx_weapon_smg_fire_01.ogg", "sfx/sfx_weapon_smg_fire_02.ogg", "sfx/sfx_weapon_smg_fire_03.ogg"],
+      "pitch": [1.0, 1.07], "volume_db": -2.0, "max_distance": 60.0,
+      "note": "冲锋枪：轻快高频连发（程序化合成本源，原创无版权）"
     },
     "pistol_reload_start": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
@@ -211,32 +211,32 @@
     "charge_windup": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
       "files": ["sfx/sfx_charge_windup_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
-      "note": "冲撞者蓄力（占位，素材未到静默）"
+      "note": "冲撞者蓄力（程序化合成）"
     },
     "charger_hit": {
       "mode": "3d", "bus": "SFX", "priority": 80, "limit": 2,
       "files": ["sfx/sfx_charger_hit_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -1.0, "max_distance": 30.0,
-      "note": "冲撞者命中（占位）"
+      "note": "冲撞者命中（程序化合成）"
     },
     "charger_death": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
       "files": ["sfx/sfx_charger_death_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
-      "note": "冲撞者死亡（占位）"
+      "note": "冲撞者死亡（程序化合成）"
     },
     "spit_windup": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
       "files": ["sfx/sfx_spit_windup_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -3.0, "max_distance": 35.0,
-      "note": "喷吐者吐酸前摇（占位）"
+      "note": "喷吐者吐酸前摇（程序化合成）"
     },
     "acid_land": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
       "files": ["sfx/sfx_acid_land_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 25.0,
-      "note": "酸液落地（占位）"
+      "note": "酸液落地（程序化合成）"
     },
     "spitter_death": {
       "mode": "3d", "bus": "SFX", "priority": 70, "limit": 2,
       "files": ["sfx/sfx_spitter_death_01.ogg"], "pitch": [0.9, 1.0], "volume_db": -2.0, "max_distance": 40.0,
-      "note": "喷吐者死亡（占位）"
+      "note": "喷吐者死亡（程序化合成）"
     },
     "hit_confirm": {
       "mode": "3d", "bus": "SFX", "priority": 50, "limit": 4,

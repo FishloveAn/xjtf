@@ -356,9 +356,16 @@ func _kill_death_tweens() -> void:
 
 ## 远处剔除（M3-S4）：visibility_range 60m（tech-plan §5.2），仅真机渲染生效，幂等
 func _apply_visibility_range() -> void:
-	var visual := _body.get_node_or_null("Visual") as GeometryInstance3D
+	var visual := _body.get_node_or_null("Visual")
 	if visual != null:
-		visual.visibility_range_end = 60.0
+		_apply_visibility_range_recursive(visual)
+
+
+func _apply_visibility_range_recursive(node: Node) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).visibility_range_end = 60.0
+	for child in node.get_children():
+		_apply_visibility_range_recursive(child)
 
 
 ## 音效钩子：事件 → SfxPool 播放（素材缺失静默跳过；S7 接线；pos 默认丧尸位置）

@@ -63,3 +63,15 @@
 - [x] Kenney Impact Sounds / Interface Sounds 下载入库（2026-08-04，工程执行）
 - [ ] freesound CC0 枪声（pistol/shotgun）筛选下载（用户拍板方案：写实枪声）——替换占位文件后回填本表
 - [ ] 响度归一化（-15 LUFS）可选：MVP 直用 .ogg 可跑（音频方向 §4.3）
+
+## 2026-08-10 新增 42 个音效最终来源
+
+| 文件组 | 数量 | 来源 | 许可/权利 | 说明 |
+|---|---:|---|---|---|
+| `rifle_fire_01~03`、`smg_fire_01~03` | 6 | 项目自研 `tools/synth_audio.py` | 项目原创 | 正式自动武器枪声，步枪偏低频、冲锋枪偏高频 |
+| 玩家 jump/land/down/die/revive/roll | 7 | 项目自研 `tools/synth_audio.py` | 项目原创 | 非真人拟声，避免肖像/配音权利问题 |
+| charge/spit/acid/特感死亡/攻击提示 | 7 | 项目自研 `tools/synth_audio.py` | 项目原创 | 程序化噪声、扫频与包络合成 |
+| `weapon_aim_in/out`、`button_press`、`ui_click_02` | 4 | 项目自研 `tools/synth_audio.py` | 项目原创 | 2026-08-10 重制 UI 瞬态，避免 10ms 数字爆点 |
+| 门、脚步、机关、拾取、其余 UI、切枪 | 18 | Kenney Interface/Impact/Footstep Sounds 的 CC0 选材与重命名；`concrete_02` 做峰值归一化 | CC0 | 保留原许可；逐文件经客观音频验收 |
+
+> 42 个文件均通过 `tools/analyze_audio_assets.py`：时长、峰值、RMS、静音率、削波率与有限值检查 42/42 PASS；Godot 55 个事件播放链路 55/55 命中。

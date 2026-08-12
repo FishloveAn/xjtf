@@ -1,0 +1,42 @@
+{
+  "asset_name": "char_goblin_charger",
+  "concept_images": [
+    "项目文档/02-设计/怪概念设计/goblin_charger.png",
+    "项目文档/02-设计/怪概念设计/zombie_charger.png"
+  ],
+  "role": "冲撞型特殊敌人",
+  "silhouette": {
+    "height_m": 2.1,
+    "shoulder_to_height": 0.75,
+    "head_to_height": 0.13,
+    "stance": "前倾、低重心"
+  },
+  "required_features": [
+    "超宽肩",
+    "双侧巨拳",
+    "尖耳",
+    "獠牙",
+    "低重心前倾姿态"
+  ],
+  "simplifiable_features": [
+    "细碎皮肤裂纹",
+    "牙齿数量",
+    "肌肉表面小褶皱"
+  ],
+  "palette": {
+    "base": "#EB2B06",
+    "accent": "#FF9414",
+    "emissive": []
+  },
+  "budgets": {
+    "triangles_max": 4000,
+    "materials_max": 2
+  },
+  "visual_review": {
+    "front": "pending",
+    "side": "pending",
+    "back": "pending",
+    "game_view": "pending",
+    "notes": []
+  }
+}

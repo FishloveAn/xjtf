@@ -1,9 +1,17 @@
 extends SceneTree
 
-# 渲染玩家与丧尸到 PNG，对比朝向
+# 正面渲染正式角色到 PNG，供轮廓、材质、朝向与比例验收。
 const FILES := [
-	["player", "res://assets/models/characters/char_player_01.glb", Vector3(0, 0.9, 0), 0.578],
-	["zombie", "res://assets/models/characters/char_zombie_common_01.glb", Vector3(0, 0.85, 0), 1.45],
+	["player", "res://assets/models/characters/char_player_01.glb", Vector3(0, 0, 0), 1.0],
+	["zombie", "res://assets/models/characters/char_zombie_common_01.glb", Vector3(0, 0, 0), 1.0],
+	["zombie02", "res://assets/models/characters/char_zombie_common_02.glb", Vector3(0, 0, 0), 1.0],
+	["spitter", "res://assets/models/characters/char_zombie_spitter_01.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_lean", "res://assets/models/characters/char_goblin_common_lean.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_strong", "res://assets/models/characters/char_goblin_common_strong.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_charger", "res://assets/models/characters/char_goblin_charger.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_spitter", "res://assets/models/characters/char_goblin_spitter.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_hunter", "res://assets/models/characters/char_goblin_hunter.glb", Vector3(0, 0, 0), 1.0],
+	["goblin_boomer", "res://assets/models/characters/char_goblin_boomer.glb", Vector3(0, 0, 0), 1.0],
 ]
 
 
@@ -13,10 +21,23 @@ func _initialize() -> void:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(512, 512)
 	vp.transparent_bg = false
+	vp.own_world_3d = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root_node.add_child(vp)
+	var environment := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.12, 0.12, 0.14)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color.WHITE
+	env.ambient_light_energy = 1.2
+	environment.environment = env
+	vp.add_child(environment)
 	var cam := Camera3D.new()
 	vp.add_child(cam)
-	cam.look_at_from_position(Vector3(0, 1.6, 2.4), Vector3(0, 1.0, 0), Vector3.UP)
+	cam.current = true
+	# 模型统一面朝 -Z，因此相机位于 -Z 才是正面视图。
+	cam.look_at_from_position(Vector3(0, 1.35, -3.0), Vector3(0, 0.95, 0), Vector3.UP)
 	var light := DirectionalLight3D.new()
 	light.rotation = Vector3(-deg_to_rad(45), deg_to_rad(30), 0)
 	light.light_energy = 1.2

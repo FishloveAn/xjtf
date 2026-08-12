@@ -1,0 +1,47 @@
+{
+  "asset_name": "char_goblin_charger",
+  "concept_images": [
+    "项目文档/02-设计/怪概念设计/goblin_charger.png"
+  ],
+  "role": "冲撞型特殊敌人",
+  "silhouette": {
+    "height_m": 2.1,
+    "shoulder_to_height": 0.75,
+    "head_to_height": 0.13,
+    "stance": "前倾、低重心"
+  },
+  "required_features": [
+    "超宽肩",
+    "双侧巨拳",
+    "尖耳",
+    "獠牙",
+    "低重心前倾姿态"
+  ],
+  "simplifiable_features": [
+    "细碎皮肤裂纹",
+    "牙齿数量",
+    "手指分节",
+    "肌肉表面小褶皱"
+  ],
+  "palette": {
+    "base": "#E92B08",
+    "accent": "#FF9B22",
+    "emissive": []
+  },
+  "budgets": {
+    "triangles_max": 4000,
+    "materials_max": 2
+  },
+  "visual_review": {
+    "front": "pass",
+    "side": "pass",
+    "back": "pass",
+    "game_view": "pass",
+    "notes": [
+      "第 4 轮将 SF3D 长口鼻压回双肩之间，并重建低模面部体块。",
+      "巨臂、巨拳、尖耳、獠牙和前倾姿态均能在缩略图中辨识。",
+      "保留粗粝三角面作为风格化低模表面；手指分节留待绑定前处理。",
+      "当前仅通过静态造型门槛，骨骼、动画和 Godot 游戏内验收尚未执行。"
+    ]
+  }
+}

@@ -223,6 +223,7 @@ func _hitscan_pellet(origin: Vector3, dir: Vector3, player: Node3D) -> void:
 @rpc("authority", "call_local", "reliable")
 func hit_confirmed(pos: Vector3) -> void:
 	_play_sfx("zombie_hurt", pos)  # 命中音效（3D 定位在命中点）
+	_play_sfx("hit_confirm", pos)
 	var parent := get_tree().current_scene as Node3D
 	if parent != null:
 		HitFeedback.spawn_blood_puff(parent, pos)

@@ -64,8 +64,11 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _on_start_pressed() -> void:
+	SfxPool.play_2d("ui_click")
 	if not NetworkManager.is_server():
+		SfxPool.play_2d("ui_denied")
 		return
+	SfxPool.play_2d("ui_confirm")
 	_start_game.rpc()  # 广播（含 call_local），全员切主场景（B4）
 
 

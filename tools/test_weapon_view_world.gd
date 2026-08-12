@@ -1,6 +1,6 @@
 extends SceneTree
 
-# P2 武器美术接入最小验证：真实玩家场景的本地/远端可见性、渲染层、阴影与切枪兼容性。
+# P2 玩家与武器美术接入最小验证：真实玩家场景的本地/远端可见性、渲染层、阴影与切枪兼容性。
 
 const WEAPON_NAMES := [&"Pistol", &"Shotgun", &"Rifle", &"SMG"]
 const WORLD_LAYER := 1
@@ -37,6 +37,11 @@ func _spawn_player(peer_name: String) -> Node3D:
 
 
 func _verify_player(player: Node3D, is_local: bool) -> void:
+	var body := player.get_node_or_null("Body") as Node3D
+	_expect(body != null, "%s 缺少第三人称 Body" % player.name)
+	if body != null:
+		_expect(body.visible != is_local, "%s Body 本地/远端可见性错误" % player.name)
+
 	var view_root := player.get_node_or_null("Head/Camera/ViewMesh") as Node3D
 	_expect(view_root != null, "%s 缺少 Camera/ViewMesh" % player.name)
 	if view_root == null:
@@ -95,4 +100,4 @@ func _expect(condition: bool, message: String) -> void:
 	if condition:
 		return
 	_failures += 1
-	printerr("[P2 WEAPON] FAIL: " + message)
+	printerr("[P2 PLAYER/WEAPON] FAIL: " + message)

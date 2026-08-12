@@ -44,6 +44,22 @@
 | 2026-08-06 | `assets/textures/environment/tex_rust_metal_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 锈金属通用（备用） |
 | （待入库） | `props/prop_*.glb` | FPS Kit / City Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 道具箱（颜色已修正：弹药黄/橙、血包医疗绿；模型 P4 替换未入库） |
 
+## 最终美术收口（2026-08-10）
+
+> 本节为当前文件的最终状态；若与上方历史处理记录冲突，以本节为准。以下资产由项目内 `tools/generate_art_assets.py` 根据项目概念图程序化原创生成，不含外部网格或贴图。
+
+| 文件 | 来源/作者 | 许可 | 最终用途 |
+|---|---|---|---|
+| `char_goblin_common_lean.glb` / `char_goblin_common_strong.glb` | 项目自研，参考 `怪概念设计/goblin_common_*.png` | 项目内部生成 | 哥布林普通体视觉库，12 骨骼 + 6 动画 |
+| `char_goblin_charger.glb` | 项目自研，参考 `goblin_charger.png` + `zombie_charger.png` | 项目内部生成 | 正式冲撞者，已接入 `zombie_charger.tscn` |
+| `char_goblin_spitter.glb` | 项目自研，参考 `goblin_spitter.png` + `zombie_spitter.png` | 项目内部生成 | 正式喷吐者，已接入 `zombie_spitter.tscn` |
+| `char_goblin_hunter.glb` / `char_goblin_boomer.glb` | 项目自研，参考同名概念图 | 项目内部生成 | 跳跃者/自爆者正式模型储备，12 骨骼 + 6 动画 |
+| `char_player_01.glb` | 项目自研重建 | 项目内部生成 | 玩家第三人称 Body，424 tris、2 材质、1.78m |
+| `char_zombie_common_02.glb` | 项目自研，参考 `zombie_common_strong.png` | 项目内部生成 | 普通丧尸壮型，536 tris、2 材质、1.79m |
+| `char_zombie_spitter_01.glb` | 项目自研重建，参考 `zombie_spitter.png` | 项目内部生成 | 丧尸喷吐者备选，748 tris、12 骨骼 + 6 动画 |
+| `props/prop_ammo_01.glb` / `props/prop_medkit_01.glb` | 项目自研 | 项目内部生成 | 正式弹药箱/医疗包，已替换 BoxMesh |
+| `wep_pistol/rifle/shotgun/smg_01.glb` 材质色因子 | 原网格仍为 Quaternius CC0；项目内二次着色 | CC0 + 项目修改 | 手枪黄、霰弹橙、步枪蓝、冲锋枪青蓝 |
+
 ## 处理说明（M3-ART-P0）
 
 - **来源包**：Quaternius Zombie Apocalypse Kit（https://quaternius.com/packs/zombieapocalypsekit.html），含 4 丧尸 + 4 角色 + 2 狗 + 大量环境，CC0。
@@ -108,6 +124,6 @@
 - [x] **M3-ART-P1 特感替换**：Charger（Chubby 保留骨骼染橙）+ Spitter（Ribcage 保留骨骼染黄绿）+ 6 动画裁剪重命名 + 动画状态接线 + 记账
 - [x] **M3-ART-P2 玩家 Body + 武器视觉**：玩家 Body（BlueSoldier 剥骨静态 2994 tris，2 材质，1.80m）+ 4 把武器（Quaternius Ultimate Guns FBX→OBJ→GLB 转换，枪口朝 -Z 校准） + 记账
 - [x] **M3-ART-P3 地图环境美化**：rustyard 贴皮（程序化混凝土/金属/锈蚀纹理）+ 20 个装饰件（ZAK Environment FBX→GLB 纯色）+ 记账；几何/碰撞/触发/补给/刷怪零改动
-- [ ] R2 普通丧尸壮型（Chubby 已被 P1 占用，需换替代或降级）
-- [ ] 道具 P4 道具模型替换（颜色已先改，模型沿用 BoxMesh 可降级）
-- [ ] 全部入库后按替换清单命名 + 逐条补全作者/链接/许可
+- [x] R2 普通丧尸壮型（项目自研重建，已接入普通丧尸随机视觉变体）
+- [x] 道具 P4 模型替换（弹药箱/医疗包正式 GLB，碰撞与玩法结构不变）
+- [x] 最终资产按替换清单命名并补全来源/生成方式
