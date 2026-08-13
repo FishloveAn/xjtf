@@ -18,8 +18,26 @@ var zombie_type := "common"
 var hp := 100.0
 
 
+func _ready() -> void:
+	get_parent().add_to_group("zombies")
+
+
+## 武器命中统一入口：普通怪爆头秒杀，特感爆头 2 倍伤害。
+func apply_weapon_hit(base_damage: float, hit_zone: String, attacker: Node = null) -> Dictionary:
+	var before := hp
+	var resolved_damage := base_damage
+	if hit_zone == "head":
+		resolved_damage = max_hp if zombie_type == "common" else base_damage * 2.0
+	take_damage(resolved_damage, attacker)
+	return {
+		"hit_zone": hit_zone,
+		"applied_damage": before - hp,
+		"killed": before > 0.0 and hp <= 0.0,
+	}
+
+
 func take_damage(dmg: float, attacker: Node = null) -> void:
-	if not NetworkManager.is_server():
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
 		push_warning("zombie_health.take_damage 仅服务器调用，已拒绝")
 		return
 	if hp <= 0.0:

@@ -155,6 +155,9 @@ func _verify_empty_reload(player: Node) -> void:
 
 ## 切到指定武器（补齐注入前的激活步骤：_poll_auto_fire 只对当前激活武器连发）
 func _activate_weapon(player: Node, weapon: Node) -> void:
+	var weapon_id := String(weapon.get("weapon_id"))
+	if weapon_id != "pistol":
+		player.call("equip_primary", weapon_id)
 	var weapons: Array = player.get("_weapons")
 	for i in weapons.size():
 		if weapons[i] == weapon:

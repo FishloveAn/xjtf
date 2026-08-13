@@ -21,10 +21,12 @@ const CLEARED_PAUSE := 1.5           # 秒，WaveCleared 播报停留时长（E2
 const LEVEL_SETUP_COUNTDOWN := 5.0   # 秒，关卡波次预告倒计时（推进制，比竞技场短，S5）
 const BURST_BATCH := 8               # burst 每批刷怪数（短时间涌入，同屏 cap 仍生效）
 const BURST_BATCH_INTERVAL := 0.15   # 秒，burst 批次间隔
-const SPAWN_RADIUS := 3.0            # 米，刷怪点随机偏移半径
+const MIN_SPAWN_DISTANCE := 12.0
 const SPECIAL_RELEASE_TIMEOUT := 10.0 # 秒，composition 特感等待 Director 时机超时兜底（防低压力卡关）
 const CHARGER_SCENE_PATH := "res://scenes/enemies/zombie_charger.tscn"
 const SPITTER_SCENE_PATH := "res://scenes/enemies/zombie_spitter.tscn"  # M3-S3 喷吐者
+const HUNTER_SCENE_PATH := "res://scenes/enemies/zombie_hunter.tscn"    # M3-ART 跳跃者接线
+const BOOMER_SCENE_PATH := "res://scenes/enemies/zombie_boomer.tscn"    # M3-ART 自爆者接线
 const SpawnLedger := preload("res://scripts/gameplay/wave_spawn_ledger.gd")
 
 ## 波次事件信号（HUD 等订阅，只读展示；由服务器 authority 广播触发）
@@ -43,6 +45,7 @@ var level_mode := false
 ## 刷怪点组名（S5）：竞技场默认 "spawn_point"（玩家出生点同组）；推进制由 LevelAdvance 切
 ## "horde_spawn_point"（关卡内散布的尸潮刷怪点，与玩家出生点分离）
 var spawn_point_group := "spawn_point"
+var _spawn_cursor := 0
 
 var _waves: Array = []
 var _catalog := WaveDefinitionCatalog.new()
@@ -57,11 +60,15 @@ var _concurrent_count := 0
 var _spawned_commons := 0
 var _spawned_chargers := 0
 var _spawned_spitters := 0
+var _spawned_hunters := 0
+var _spawned_boomers := 0
 var _active_specials := 0
 var _spawn_ledger := SpawnLedger.new()
 var _special_pending_timer := 0.0
 var _charger_scene: PackedScene = null
 var _spitter_scene: PackedScene = null
+var _hunter_scene: PackedScene = null
+var _boomer_scene: PackedScene = null
 var _spawn_timer := 0.0
 var _setup_timer := 0.0
 var _cleared_timer := 0.0
@@ -87,6 +94,8 @@ func _ready() -> void:
 		# M3-S2/S3：特感场景延迟 load（不池化，死亡 queue_free，风险备注 6）
 		_charger_scene = load(CHARGER_SCENE_PATH) as PackedScene
 		_spitter_scene = load(SPITTER_SCENE_PATH) as PackedScene
+		_hunter_scene = load(HUNTER_SCENE_PATH) as PackedScene
+		_boomer_scene = load(BOOMER_SCENE_PATH) as PackedScene
 	call_deferred("_start")
 
 
@@ -194,6 +203,8 @@ func _sync_spawn_counters() -> void:
 	_spawned_commons = _spawn_ledger.spawned_type(&"common")
 	_spawned_chargers = _spawn_ledger.spawned_type(&"charger")
 	_spawned_spitters = _spawn_ledger.spawned_type(&"spitter")
+	_spawned_hunters = _spawn_ledger.spawned_type(&"hunter")
+	_spawned_boomers = _spawn_ledger.spawned_type(&"boomer")
 	_active_specials = _spawn_ledger.active_special_count()
 
 
@@ -219,7 +230,8 @@ func _tick_wave_active(delta: float) -> void:
 		return  # 全刷出后等杀光（清波判定在 _on_zombie_died）
 	# composition 有特感待刷 → 累计等待 Director 时机（压力阈值/冷却），超时兜底放行防卡关
 	var comp: Dictionary = _current_wave.get("composition", {})
-	if int(comp.get("charger", 0)) > _spawned_chargers or int(comp.get("spitter", 0)) > _spawned_spitters:
+	if int(comp.get("charger", 0)) > _spawned_chargers or int(comp.get("spitter", 0)) > _spawned_spitters \
+			or int(comp.get("hunter", 0)) > _spawned_hunters or int(comp.get("boomer", 0)) > _spawned_boomers:
 		_special_pending_timer += delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0:
@@ -278,6 +290,10 @@ func _spawn_one_zombie() -> void:
 		_spawn_one_charger()
 	elif ztype == "spitter":
 		_spawn_one_spitter()
+	elif ztype == "hunter":
+		_spawn_one_hunter()
+	elif ztype == "boomer":
+		_spawn_one_boomer()
 	elif ztype == "common":
 		_spawn_one_common()
 
@@ -307,7 +323,10 @@ func _spawn_one_common() -> void:
 	if _pool == null:
 		push_warning("[WaveManager] 对象池未就绪，跳过刷怪")
 		return
-	var zombie: Node3D = _pool.spawn_from_pool(_random_spawn_position())
+	var spawn_position := _random_spawn_position()
+	if not spawn_position.is_finite():
+		return
+	var zombie: Node3D = _pool.spawn_from_pool(spawn_position)
 	if zombie == null:
 		push_warning("[WaveManager] 对象池耗尽/超同屏上限，跳过本只")
 		return
@@ -324,11 +343,14 @@ func _spawn_one_charger() -> void:
 	if _charger_scene == null:
 		push_warning("[WaveManager] 无法装载 zombie_charger.tscn，跳过特感")
 		return
+	var spawn_position := _random_spawn_position()
+	if not spawn_position.is_finite():
+		return
 	var charger: Node3D = _charger_scene.instantiate()
 	charger.name = "Charger"
 	charger.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_zombies.add_child(charger, true)  # 强制可读名（MultiplayerSpawner 复制要求，M2-S5）
-	charger.global_position = _random_spawn_position()
+	charger.global_position = spawn_position
 	_spawn_ledger.record_spawned(&"charger")
 	_sync_spawn_counters()
 	if _director != null:
@@ -349,11 +371,14 @@ func _spawn_one_spitter() -> void:
 	if _spitter_scene == null:
 		push_warning("[WaveManager] 无法装载 zombie_spitter.tscn，跳过特感")
 		return
+	var spawn_position := _random_spawn_position()
+	if not spawn_position.is_finite():
+		return
 	var spitter: Node3D = _spitter_scene.instantiate()
 	spitter.name = "Spitter"
 	spitter.set_multiplayer_authority(NetworkManager.SERVER_ID)
 	_zombies.add_child(spitter, true)  # 强制可读名（MultiplayerSpawner 复制要求，M2-S5）
-	spitter.global_position = _random_spawn_position()
+	spitter.global_position = spawn_position
 	_spawn_ledger.record_spawned(&"spitter")
 	_sync_spawn_counters()
 	if _director != null:
@@ -365,6 +390,62 @@ func _spawn_one_spitter() -> void:
 
 func _on_spitter_died(_attacker: Node, _spitter: Node) -> void:
 	_spawn_ledger.record_killed(&"spitter")
+	_sync_spawn_counters()
+	_check_wave_cleared()
+
+
+## 跳跃者刷出：独立实例化（特感 ≤5 不池化，死亡 queue_free，风险备注 6）
+func _spawn_one_hunter() -> void:
+	if _hunter_scene == null:
+		push_warning("[WaveManager] 无法装载 zombie_hunter.tscn，跳过特感")
+		return
+	var spawn_position := _random_spawn_position()
+	if not spawn_position.is_finite():
+		return
+	var hunter: Node3D = _hunter_scene.instantiate()
+	hunter.name = "Hunter"
+	hunter.set_multiplayer_authority(NetworkManager.SERVER_ID)
+	_zombies.add_child(hunter, true)
+	hunter.global_position = spawn_position
+	_spawn_ledger.record_spawned(&"hunter")
+	_sync_spawn_counters()
+	if _director != null:
+		_director.mark_special_spawned()
+	var health := hunter.get_node_or_null("Health") as Damageable
+	if health != null and not health.died.is_connected(_on_hunter_died.bind(hunter)):
+		health.died.connect(_on_hunter_died.bind(hunter))
+
+
+func _on_hunter_died(_attacker: Node, _hunter: Node) -> void:
+	_spawn_ledger.record_killed(&"hunter")
+	_sync_spawn_counters()
+	_check_wave_cleared()
+
+
+## 自爆者刷出：独立实例化（特感 ≤5 不池化，死亡 queue_free，风险备注 6）
+func _spawn_one_boomer() -> void:
+	if _boomer_scene == null:
+		push_warning("[WaveManager] 无法装载 zombie_boomer.tscn，跳过特感")
+		return
+	var spawn_position := _random_spawn_position()
+	if not spawn_position.is_finite():
+		return
+	var boomer: Node3D = _boomer_scene.instantiate()
+	boomer.name = "Boomer"
+	boomer.set_multiplayer_authority(NetworkManager.SERVER_ID)
+	_zombies.add_child(boomer, true)
+	boomer.global_position = spawn_position
+	_spawn_ledger.record_spawned(&"boomer")
+	_sync_spawn_counters()
+	if _director != null:
+		_director.mark_special_spawned()
+	var health := boomer.get_node_or_null("Health") as Damageable
+	if health != null and not health.died.is_connected(_on_boomer_died.bind(boomer)):
+		health.died.connect(_on_boomer_died.bind(boomer))
+
+
+func _on_boomer_died(_attacker: Node, _boomer: Node) -> void:
+	_spawn_ledger.record_killed(&"boomer")
 	_sync_spawn_counters()
 	_check_wave_cleared()
 
@@ -396,11 +477,69 @@ func _concurrent_cap() -> int:
 
 
 func _random_spawn_position() -> Vector3:
-	var points := get_tree().get_nodes_in_group(spawn_point_group)
+	var points: Array[Node] = get_tree().get_nodes_in_group(spawn_point_group)
 	if points.is_empty():
-		return Vector3.ZERO
-	var p := points[randi() % points.size()] as Node3D
-	return p.global_position + Vector3(randf_range(-SPAWN_RADIUS, SPAWN_RADIUS), 0.0, randf_range(-SPAWN_RADIUS, SPAWN_RADIUS))
+		push_error("[WaveManager] 没有刷怪点组 %s，暂停刷怪" % spawn_point_group)
+		return Vector3(INF, INF, INF)
+	var zone := String(_current_wave.get("spawn_zone", ""))
+	if not zone.is_empty():
+		points = points.filter(func(point: Node) -> bool:
+			return point.has_meta("spawn_zone") and String(point.get_meta("spawn_zone")) == zone)
+	if points.is_empty():
+		push_error("[WaveManager] 区域 %s 没有可用刷怪点，暂停刷怪" % zone)
+		return Vector3(INF, INF, INF)
+	var players := _alive_players()
+	var safe_points: Array[Node] = []
+	for point in points:
+		if _spawn_point_is_safe(point as Node3D, players):
+			safe_points.append(point)
+	var selected: Node3D
+	if not safe_points.is_empty():
+		selected = safe_points[_spawn_cursor % safe_points.size()] as Node3D
+		_spawn_cursor += 1
+	else:
+		selected = _farthest_spawn_point(points, players)
+	return selected.global_position
+
+
+func _farthest_spawn_point(points: Array[Node], players: Array[Node3D]) -> Node3D:
+	var best := points[0] as Node3D
+	var best_distance := -INF
+	for point_node in points:
+		var point := point_node as Node3D
+		var nearest_player := INF
+		for player in players:
+			nearest_player = minf(nearest_player, point.global_position.distance_to(player.global_position))
+		if nearest_player > best_distance:
+			best_distance = nearest_player
+			best = point
+	return best
+
+
+func _alive_players() -> Array[Node3D]:
+	var result: Array[Node3D] = []
+	for player in get_tree().get_nodes_in_group("players"):
+		var health := player.get_node_or_null("Health") as PlayerState
+		if health != null and health.state != PlayerState.State.DEAD:
+			result.append(player as Node3D)
+	return result
+
+
+func _spawn_point_is_safe(point: Node3D, players: Array[Node3D]) -> bool:
+	for player in players:
+		if player.global_position.distance_to(point.global_position) < MIN_SPAWN_DISTANCE:
+			return false
+		var camera := player.get_node_or_null("Head/Camera") as Camera3D
+		if camera == null:
+			continue
+		var target := point.global_position + Vector3.UP
+		var exclude: Array[RID] = []
+		if player is CollisionObject3D:
+			exclude.append((player as CollisionObject3D).get_rid())
+		var query := PhysicsRayQueryParameters3D.create(camera.global_position, target, 1, exclude)
+		if player.get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+			return false
+	return true
 
 
 func _unhandled_input(event: InputEvent) -> void:

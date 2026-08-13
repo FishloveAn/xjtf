@@ -223,11 +223,11 @@ func _inject_fire() -> void:
 		if bool(w.get("visible")):
 			mag_before = int(w.get("mag_current"))
 			break
-	# 逻辑层：直接调用 _unhandled_input（绕过引擎分发，测控制器本身）
+	# 逻辑层：直接调用 _input（绕过引擎分发，测控制器本身）
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = true
-	_player.call("_unhandled_input", ev)
+	_player.call("_input", ev)
 	await create_timer(0.05).timeout
 	var mag_after: int = -1
 	for w in pivot.get_children():
@@ -252,7 +252,7 @@ func _inject_mouse_look() -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.relative = Vector2(0, -200)  # 上移鼠标 → pitch 减小
 	ev.position = Vector2(640, 360)
-	_player.call("_unhandled_input", ev)
+	_player.call("_input", ev)
 	var rot_after: float = head.rotation.x
 	var dr := absf(rot_after - rot_before)
 	print("[LOOK] 逻辑层投递 motion: Head.rotation.x %f→%f 变化=%.4f" % [rot_before, rot_after, dr])

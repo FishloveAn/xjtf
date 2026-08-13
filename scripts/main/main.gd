@@ -17,7 +17,11 @@ const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const ZOMBIE_SCENE_PATH := "res://scenes/enemies/zombie_common.tscn"
 const CHARGER_SCENE_PATH := "res://scenes/enemies/zombie_charger.tscn"  # M3-S2 特感复制
 const SPITTER_SCENE_PATH := "res://scenes/enemies/zombie_spitter.tscn"  # M3-S3 喷吐者复制
+const HUNTER_SCENE_PATH := "res://scenes/enemies/zombie_hunter.tscn"    # M3-ART 跳跃者复制
+const BOOMER_SCENE_PATH := "res://scenes/enemies/zombie_boomer.tscn"    # M3-ART 自爆者复制
 const SUPPLY_SCENE_PATH := "res://scenes/environment/supply_point.tscn"
+const GRENADE_SCENE_PATH := "res://scenes/gameplay/grenade.tscn"
+const MOLOTOV_SCENE_PATH := "res://scenes/gameplay/molotov.tscn"
 
 ## 主机给客户端留的切场景宽限（秒）：避免生成包先于客户端主场景到达而被丢弃
 const SPAWN_GRACE_SECONDS := 0.5
@@ -26,6 +30,7 @@ const SPAWN_GRACE_SECONDS := 0.5
 @onready var _player_spawner: MultiplayerSpawner = $PlayerSpawner
 @onready var _zombie_spawner: MultiplayerSpawner = $ZombieSpawner
 @onready var _pickup_spawner: MultiplayerSpawner = $PickupSpawner
+@onready var _projectile_spawner: MultiplayerSpawner = $ProjectileSpawner
 
 ## peer_id -> 玩家节点（去重用）
 var _spawned_players: Dictionary = {}
@@ -43,10 +48,14 @@ func _ready() -> void:
 	_zombie_spawner.add_spawnable_scene(ZOMBIE_SCENE_PATH)
 	_zombie_spawner.add_spawnable_scene(CHARGER_SCENE_PATH)  # M3-S2 特感走同一 Spawner 复制
 	_zombie_spawner.add_spawnable_scene(SPITTER_SCENE_PATH)  # M3-S3 喷吐者走同一 Spawner 复制
+	_zombie_spawner.add_spawnable_scene(HUNTER_SCENE_PATH)   # M3-ART 跳跃者走同一 Spawner 复制
+	_zombie_spawner.add_spawnable_scene(BOOMER_SCENE_PATH)   # M3-ART 自爆者走同一 Spawner 复制
 	_pickup_spawner.add_spawnable_scene(SUPPLY_SCENE_PATH)
 	# M3-S6：丧尸死亡掉落物（弹药/医疗包）走 PickupSpawner 复制（服务器生成，各端同步）
 	_pickup_spawner.add_spawnable_scene("res://scenes/environment/pickup_ammo.tscn")
 	_pickup_spawner.add_spawnable_scene("res://scenes/environment/pickup_health.tscn")
+	_projectile_spawner.add_spawnable_scene(GRENADE_SCENE_PATH)
+	_projectile_spawner.add_spawnable_scene(MOLOTOV_SCENE_PATH)
 
 	# M3-S6：进入主场景 = 新会话，统计清零（GameState autoload 跨场景常驻，重开对局必须重置）
 	GameState.reset_session()
@@ -139,3 +148,15 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func _on_server_disconnected() -> void:
 	# B8：主机退出 → 客户端回主菜单，不崩溃
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+func broadcast_aoe_visual(position: Vector3, kind: String) -> void:
+	if NetworkManager.is_network_active():
+		_show_aoe_visual.rpc(position, kind)
+	else:
+		_show_aoe_visual(position, kind)
+
+
+@rpc("authority", "call_local", "unreliable")
+func _show_aoe_visual(position: Vector3, kind: String) -> void:
+	$AoeFxPool.show_aoe(position, kind)

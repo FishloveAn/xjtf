@@ -6,7 +6,7 @@ static func normalize_progress(data: Dictionary, current_version: int, complete_
 	if not data.has("version") or not (data.version is int or data.version is float):
 		return {}
 	var version := int(data.version)
-	if version != 1 and version != 2 and version != current_version:
+	if version < 1 or version > current_version:
 		return {}
 	for key in ["segment", "finish_time_s", "best_score"]:
 		if not data.has(key) or not (data[key] is int or data[key] is float):
@@ -33,7 +33,7 @@ static func normalize_progress(data: Dictionary, current_version: int, complete_
 			return {}
 	var player_state: Dictionary = {}
 	var level_flags: Dictionary = {}
-	if version == current_version:
+	if version >= 3:
 		if not data.has("player_state") or not (data.player_state is Dictionary):
 			return {}
 		player_state = (data.player_state as Dictionary).duplicate(true)
@@ -63,6 +63,19 @@ static func is_valid_equipment(equipment: Dictionary) -> bool:
 		return true
 	if not (equipment.get("active_weapon", "") is String):
 		return false
+	var primary: Variant = equipment.get("primary_weapon", "")
+	if not (primary is String) or String(primary) not in ["", "shotgun", "rifle", "smg"]:
+		return false
+	var claimed: Variant = equipment.get("claimed_weapon_stands", [])
+	if not (claimed is Array):
+		return false
+	for weapon_id in claimed:
+		if not (weapon_id is String) or String(weapon_id) not in ["shotgun", "rifle", "smg"]:
+			return false
+	for count_key in ["grenade_count", "molotov_count"]:
+		var count = equipment.get(count_key, 0)
+		if not (count is int or count is float) or int(count) < 0 or int(count) > 1:
+			return false
 	var magazines = equipment.get("magazines")
 	if not (magazines is Dictionary):
 		return false

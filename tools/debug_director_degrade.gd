@@ -2,7 +2,7 @@ extends SceneTree
 ## Director degrade 回归：启用时应把波次同屏上限裁剪到 director.json.max_concurrent。
 
 const MAIN_SCENE := "res://scenes/main/main.tscn"
-const CONFIGURED_CAP := 100
+const CONFIGURED_CAP := 60
 
 var _fail := 0
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	root.get_node("SfxPool").set("_events", {})
 	_check(bool(director.get("_degrade_enabled")), "director.json degrade.enabled=true 已读取")
 	_check(int(director.get("_degrade_max_concurrent")) == CONFIGURED_CAP,
-		"director.json degrade.max_concurrent=100 已读取")
+		"director.json degrade.max_concurrent=60 已读取")
 	director.set("_specials_threshold", 0.0)
 	director.set("_specials_cooldown_s", 0.0)
 	director.set("_specials_max_simultaneous", 5)
@@ -40,7 +40,7 @@ func _run() -> void:
 	wm.set("_setup_timer", 0.0)
 	var max_concurrent := await _observe_peak(wm, 4.0)
 	_check(max_concurrent == CONFIGURED_CAP,
-		"启用 degrade 后总同屏峰值被 max_concurrent=100 限制（实际=%d）" % max_concurrent)
+		"启用 degrade 后总同屏峰值被 max_concurrent=60 限制（实际=%d）" % max_concurrent)
 	await _kill_until_cleared(wm, main.get_node("Zombies"), 8.0)
 	wm.set("_current_wave", {"concurrent_cap": 120})
 	director.set("_degrade_enabled", false)

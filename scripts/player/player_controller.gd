@@ -12,6 +12,15 @@
 extends CharacterBody3D
 
 const WALK_SPEED := 5.0       # 米/秒，移动速度
+const SPRINT_SPEED := 7.5
+const SLIDE_START_SPEED := 8.5
+const SLIDE_DURATION := 0.7
+const SLIDE_COOLDOWN := 0.35
+const GROUND_ACCEL := 28.0
+const GROUND_DECEL := 34.0
+const AIR_ACCEL := 8.0
+const COYOTE_TIME := 0.12
+const JUMP_BUFFER_TIME := 0.12
 const JUMP_VELOCITY := 4.5    # 米/秒，起跳初速度
 const WORLD_RENDER_LAYER := 1
 const VIEW_RENDER_LAYER := 1 << 1
@@ -44,23 +53,89 @@ const _WEAPON_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4]
 var _weapons: Array[WeaponBase] = []
 var _view_meshes: Array[Node3D] = []
 var _current_weapon_index := 0
+var primary_weapon_id := ""
+var claimed_weapon_stands: Array[String] = []
+var grenade_count := 0
+var molotov_count := 0
 ## 左键按住状态（M3-S1 自动武器连发）：按下置 true、松开置 false；轮询只对 auto 武器开火
 var _fire_held := false
 ## 脚步/落地状态（仅本地玩家使用）
 var _step_timer := 0.0
 var _was_on_floor := true
 var _fall_speed := 0.0
+var _slide_timer := 0.0
+var _slide_cooldown := 0.0
+var _slide_direction := Vector3.ZERO
+var _coyote_timer := 0.0
+var _jump_buffer_timer := 0.0
+var _vaulting := false
+var _vault_elapsed := 0.0
+var _vault_from := Vector3.ZERO
+var _vault_to := Vector3.ZERO
+const VAULT_DURATION := 0.28
+var _mouse_capture_requested := true
+
+## 幸存者皮肤配色（美术方向 §3.1：换皮不换网，材质 albedo_color 变体；避纯蓝紫，留蓝紫给环境）
+## 按 peer authority 取模分配，所有端对同一玩家算出同一色（第三人称 Body 观感一致）
+const SKIN_COLORS: Array[Color] = [
+	Color(1.0, 0.79, 0.24),   # 安全黄
+	Color(0.24, 0.86, 0.52),  # 医疗绿
+	Color(1.0, 0.48, 0.18),   # 信号橙
+	Color(0.78, 0.80, 0.83),  # 灰白
+]
+
+## 第一人称 viewmodel 动画状态（美术方向 §5.1：sway 鼠标随动 / bob 步伐 / recoil 后坐 / reload 换弹下压）
+## 仅本地玩家 authority 使用；动画偏移作用在 Head/Camera/ViewMesh 根节点（相机子节点、rotation 默认 0，
+## 绕其 X/Y 轴即相机水平/垂直轴，避免枪 glb 自身 rotation.y=π 带来的符号翻转）
+var _view_root: Node3D = null
+var _view_root_base_pos := Vector3.ZERO
+var _view_root_base_rot := Vector3.ZERO
+var _recoil := 0.0                    # 后坐上抬角度（度），开火 +2.5°，快速衰减回弹
+var _sway := Vector2.ZERO             # 平滑后的鼠标随动（x=俯仰 y=水平）
+var _sway_target := Vector2.ZERO      # 鼠标累积目标，随帧回中
+var _bob_time := 0.0                  # 步伐摆动相位
+var _reload_level := 0.0              # 换弹下压强度 0..1（reloading 时升到 1，结束回 0）
 
 
 func _ready() -> void:
 	add_to_group("players")  # HUD 等按组找本地玩家（tech-plan §8.4 用组代替长引用链）
 	_configure_weapon_visuals()
 	_collect_weapons()
+	_apply_skin()
 	_place_at_spawn_point()
 	if is_multiplayer_authority():
 		_camera.current = true
 		# 延迟一帧捕获：场景切换瞬间窗口可能未聚焦，立即设置不生效（M1-INPUT）
 		_capture_mouse.call_deferred()
+
+
+## 幸存者皮肤：按 peer authority 取模选色，遍历 Body 网格 duplicate 材质改 albedo_color（换皮不换网）。
+## 所有端对同一玩家算出同一色（authority 一致），第三人称观感统一；duplicate 避免污染共享材质。
+func _apply_skin() -> void:
+	var body := get_node_or_null("Body") as Node3D
+	if body == null:
+		return
+	var color := SKIN_COLORS[int(get_multiplayer_authority()) % SKIN_COLORS.size()]
+	_apply_skin_recursive(body, color)
+
+
+func _apply_skin_recursive(node: Node, color: Color) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		var mesh := mi.mesh
+		if mesh != null:
+			for i in mesh.get_surface_count():
+				var mat := mi.get_surface_override_material(i)
+				if mat == null:
+					mat = mesh.surface_get_material(i)
+				if mat == null:
+					continue
+				var dup := mat.duplicate() as Material
+				if dup is StandardMaterial3D:
+					(dup as StandardMaterial3D).albedo_color = color
+				mi.set_surface_override_material(i, dup)
+	for child in node.get_children():
+		_apply_skin_recursive(child, color)
 
 
 ## M2-S5 缺陷修复：4.7 要求同步器 authority 在 _enter_tree 设置（早于 _ready 的 _setup_sync）。
@@ -75,6 +150,7 @@ func _enter_tree() -> void:
 
 ## 捕获鼠标（A5）：延迟一帧执行，等待窗口聚焦
 func _capture_mouse() -> void:
+	_mouse_capture_requested = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -127,21 +203,25 @@ func _place_at_spawn_point() -> void:
 	global_rotation.y = spawn.global_rotation.y
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
 	# Esc 释放鼠标（A5）
 	if event.is_action_pressed("ui_cancel"):
 		SfxPool.play_2d("ui_cancel")
+		_mouse_capture_requested = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
 	# 点击窗口重新捕获（A5）：仅鼠标可见（Esc 释放后）时点击才重新捕获；
 	# 已捕获（CAPTURED）状态下左键直接走开火分支，不再被此分支吞掉（M1-INPUT）
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
+		_mouse_capture_requested = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
 	# 鼠标视角：yaw 作用于身体（rotation.y），pitch 作用于 Head（rotation.x）
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseMotion and _mouse_capture_requested:
+		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		var ps := get_node_or_null("Health") as PlayerState
 		if ps != null and ps.state == PlayerState.State.DEAD:
 			return  # 死亡：冻结视角（DOWN 保留视角）
@@ -151,6 +231,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			deg_to_rad(-89.0),
 			deg_to_rad(89.0)
 		)
+		# viewmodel 鼠标随动目标：枪口朝鼠标移动方向轻微摆（§5.1，随帧回中）
+		_sway_target.x = clampf(_sway_target.x - event.relative.y * 0.004, -1.0, 1.0)
+		_sway_target.y = clampf(_sway_target.y - event.relative.x * 0.004, -1.0, 1.0)
 		return
 	# 交互键 E：倒地自救援（单机调试）/ 救援附近倒地队友（多人）
 	if event.is_action_pressed("interact"):
@@ -177,6 +260,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		if weapon != null:
 			weapon.try_reload()
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_G, KEY_H]:
+		var throwable_type := "grenade" if event.keycode == KEY_G else "molotov"
+		if NetworkManager.is_server():
+			request_throw(throwable_type)
+		else:
+			request_throw.rpc_id(NetworkManager.SERVER_ID, throwable_type)
+		return
+	if event.is_action_pressed("slide") and not event.is_echo():
+		_try_start_slide()
+		return
 	# 切枪：数字键 1-4（对应 WeaponPivot 下武器列表顺序；各自弹药独立，M3-S1 扩至 4 把）
 	if event is InputEventKey and event.pressed and not event.echo:
 		for i in _WEAPON_KEYS.size():
@@ -194,6 +287,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## 交互键 E 按下：S4 补给点优先（交互区更近、瞬时结算）→ S6 掉落物拾取 → 再走救援
 func _on_interact_pressed() -> void:
+	var stand := _find_nearby_weapon_stand()
+	if stand != null:
+		if NetworkManager.is_server():
+			stand.request_pickup()
+		else:
+			stand.request_pickup.rpc_id(NetworkManager.SERVER_ID)
+		return
+	var throwable_supply := _find_nearby_throwable_supply()
+	if throwable_supply != null:
+		if NetworkManager.is_server():
+			throwable_supply.request_pickup()
+		else:
+			throwable_supply.request_pickup.rpc_id(NetworkManager.SERVER_ID)
+		return
 	# 补给点优先级高于掉落物/救援：拾取是瞬时动作，且补给点常在脚边，先结算不打断救援流
 	var supply := _find_nearby_supply()
 	if supply != null:
@@ -263,6 +370,29 @@ func _find_nearby_supply() -> SupplyPoint:
 	return best
 
 
+func _find_nearby_weapon_stand() -> WeaponStand:
+	var best: WeaponStand = null
+	var best_dist := WeaponStand.PICKUP_RANGE
+	for stand in get_tree().get_nodes_in_group("weapon_stands"):
+		var dist := global_position.distance_to(stand.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = stand as WeaponStand
+	return best
+
+
+func _find_nearby_throwable_supply() -> ThrowableSupply:
+	var best: ThrowableSupply = null
+	var best_dist := ThrowableSupply.PICKUP_RANGE
+	for supply in get_tree().get_nodes_in_group("throwable_supplies"):
+		var typed := supply as ThrowableSupply
+		var dist := global_position.distance_to(typed.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = typed
+	return best
+
+
 ## 找拾取范围内最近的掉落物（S6；与补给点同判定半径/交互，客户端选目标，服务器复验）
 func _find_nearby_pickup() -> PickupItem:
 	var best: PickupItem = null
@@ -316,19 +446,32 @@ func _collect_weapons() -> void:
 	if pivot == null:
 		return
 	var view_root := get_node_or_null("Head/Camera/ViewMesh")
+	_view_root = view_root
+	if view_root != null:
+		_view_root_base_pos = view_root.position
+		_view_root_base_rot = view_root.rotation
 	for child in pivot.get_children():
 		var w := child as WeaponBase
 		if w != null:
 			_weapons.append(w)
 			var view_mesh := view_root.get_node_or_null(String(w.name)) as Node3D if view_root != null else null
 			_view_meshes.append(view_mesh)
+			if not w.view_fired.is_connected(_on_weapon_view_fired):
+				w.view_fired.connect(_on_weapon_view_fired)
 	_set_active_weapon(0)
+
+
+## 开火视觉回调（本地玩家武器）：后坐上抬（§5.1：2-4°、0.1s 回弹）
+func _on_weapon_view_fired() -> void:
+	_recoil = minf(_recoil + 2.5, 6.0)
 
 
 ## 切换激活武器：可见性即激活标记（弹药各自独立，由每个武器节点自身维护）。
 ## 切枪为本地状态（M1-S4 记录，不同步他人）→ 切枪音只本端播（3D 挂玩家近距衰减，audio_events.json weapon_switch）
 func _set_active_weapon(index: int) -> void:
 	if index < 0 or index >= _weapons.size():
+		return
+	if index > 0 and _weapons[index].weapon_id != primary_weapon_id:
 		return
 	if index != _current_weapon_index and _weapons.size() > 1:
 		SfxPool.play_3d("weapon_switch", global_position)
@@ -339,12 +482,114 @@ func _set_active_weapon(index: int) -> void:
 			_view_meshes[i].visible = (i == index)
 
 
+## 服务器权威装备主武器；地图武器架调用。
+func equip_primary(weapon_id: String) -> bool:
+	if not NetworkManager.is_server() or weapon_id not in ["shotgun", "rifle", "smg"]:
+		return false
+	if NetworkManager.is_network_active():
+		sync_primary_weapon.rpc(weapon_id)
+	else:
+		sync_primary_weapon(weapon_id)
+	return true
+
+
+func has_claimed_weapon_stand(weapon_id: String) -> bool:
+	return claimed_weapon_stands.has(weapon_id)
+
+
+func mark_weapon_stand_claimed(weapon_id: String) -> void:
+	if NetworkManager.is_server() and NetworkManager.is_network_active():
+		sync_claimed_weapon_stand.rpc(weapon_id)
+	else:
+		sync_claimed_weapon_stand(weapon_id)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func sync_claimed_weapon_stand(weapon_id: String) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != NetworkManager.SERVER_ID:
+		return
+	if weapon_id in ["shotgun", "rifle", "smg"] and not claimed_weapon_stands.has(weapon_id):
+		claimed_weapon_stands.append(weapon_id)
+
+
+func grant_throwable(throwable_type: String) -> bool:
+	if not NetworkManager.is_server() or throwable_type not in ["grenade", "molotov"]:
+		return false
+	var count := grenade_count if throwable_type == "grenade" else molotov_count
+	if count >= 1:
+		return false
+	if NetworkManager.is_network_active():
+		sync_throwable_inventory.rpc(throwable_type, 1)
+	else:
+		sync_throwable_inventory(throwable_type, 1)
+	return true
+
+
+@rpc("any_peer", "call_local", "reliable")
+func sync_throwable_inventory(throwable_type: String, count: int) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != NetworkManager.SERVER_ID:
+		return
+	if throwable_type == "grenade":
+		grenade_count = clampi(count, 0, 1)
+	elif throwable_type == "molotov":
+		molotov_count = clampi(count, 0, 1)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_throw(throwable_type: String) -> void:
+	if not NetworkManager.is_server() or throwable_type not in ["grenade", "molotov"]:
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != get_multiplayer_authority():
+		return
+	var count := grenade_count if throwable_type == "grenade" else molotov_count
+	if count <= 0:
+		return
+	var ps := get_node_or_null("Health") as PlayerState
+	if ps != null and ps.state != PlayerState.State.ALIVE:
+		return
+	var path := "res://scenes/gameplay/%s.tscn" % throwable_type
+	var scene := load(path) as PackedScene
+	var projectile := scene.instantiate() as ThrowableProjectile
+	projectile.owner_peer_id = get_multiplayer_authority()
+	projectile.initial_velocity = -_camera.global_basis.z * 14.0 + Vector3.UP * 2.0
+	get_tree().current_scene.get_node("Projectiles").add_child(projectile, true)
+	projectile.global_position = _camera.global_position + -_camera.global_basis.z * 0.6
+	if NetworkManager.is_network_active():
+		sync_throwable_inventory.rpc(throwable_type, count - 1)
+	else:
+		sync_throwable_inventory(throwable_type, count - 1)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func sync_primary_weapon(weapon_id: String) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != NetworkManager.SERVER_ID:
+		return
+	primary_weapon_id = weapon_id
+	for i in _weapons.size():
+		if _weapons[i].weapon_id == weapon_id:
+			_set_active_weapon(i)
+			return
+
+
 ## 从检查点恢复当前武器和各武器弹匣；仅服务器在玩家 ready 后调用。
 func restore_equipment(equipment: Dictionary) -> bool:
 	var magazines = equipment.get("magazines")
 	if not (magazines is Dictionary) or _weapons.is_empty():
 		return false
 	var active_weapon := String(equipment.get("active_weapon", ""))
+	primary_weapon_id = String(equipment.get("primary_weapon", ""))
+	claimed_weapon_stands.clear()
+	for claimed in equipment.get("claimed_weapon_stands", []):
+		if String(claimed) in ["shotgun", "rifle", "smg"]:
+			claimed_weapon_stands.append(String(claimed))
+	grenade_count = clampi(int(equipment.get("grenade_count", 0)), 0, 1)
+	molotov_count = clampi(int(equipment.get("molotov_count", 0)), 0, 1)
+	if primary_weapon_id.is_empty() and active_weapon != "pistol":
+		primary_weapon_id = active_weapon
 	var active_index := -1
 	for index in _weapons.size():
 		var weapon := _weapons[index]
@@ -439,6 +684,50 @@ func _detect_ground_material() -> String:
 	return "concrete"
 
 
+## 每帧更新第一人称 viewmodel 动画（仅本地玩家）：在基准 transform 上叠加 sway/bob/recoil/reload 偏移
+func _process(delta: float) -> void:
+	if not is_multiplayer_authority():
+		return
+	_update_viewmodel(delta)
+
+
+func _update_viewmodel(delta: float) -> void:
+	if _view_root == null:
+		return
+	# 后坐：上抬角度快速衰减回弹（§5.1：2-4°、0.1s 回弹）
+	_recoil = maxf(_recoil - delta * 30.0, 0.0)
+	# 鼠标随动：目标随帧回中，实际值平滑跟随
+	_sway_target = _sway_target.lerp(Vector2.ZERO, minf(delta * 8.0, 1.0))
+	_sway = _sway.lerp(_sway_target, minf(delta * 12.0, 1.0))
+	# 步伐 bob：着地移动时上下/左右轻微晃动（§5.1：1-3cm）
+	var h_speed := Vector2(velocity.x, velocity.z).length()
+	if is_on_floor() and h_speed > 0.5:
+		_bob_time += delta * (h_speed * 1.6)
+	else:
+		_bob_time = 0.0
+	var bob_y := sin(_bob_time * 2.0) * 0.012
+	var bob_x := sin(_bob_time) * 0.008
+	var bob_roll := sin(_bob_time) * 0.01
+	# 换弹下压：reloading 期间枪口下压/略回收，结束回位
+	var weapon := _get_weapon()
+	var reloading := weapon != null and weapon.reloading
+	_reload_level = move_toward(_reload_level, 1.0 if reloading else 0.0, delta * 5.0)
+	# 合成偏移（ViewMesh rotation 默认 0，绕其 X 轴正=抬头、Y 轴正=左转）
+	var rot_off := Vector3.ZERO
+	var pos_off := Vector3.ZERO
+	rot_off.x += deg_to_rad(_recoil)      # 后坐上抬
+	rot_off.x += _sway.x * 0.02           # 鼠标随动俯仰
+	rot_off.y += _sway.y * 0.02           # 鼠标随动水平
+	rot_off.z += bob_roll
+	rot_off.x -= _reload_level * 0.3      # 换弹下压（负=低头）
+	pos_off.x += bob_x
+	pos_off.y += bob_y
+	pos_off.y -= _reload_level * 0.05     # 换弹下移
+	pos_off.z += _reload_level * 0.02     # 换弹略回收
+	_view_root.rotation = _view_root_base_rot + rot_off
+	_view_root.position = _view_root_base_pos + pos_off
+
+
 func _physics_process(delta: float) -> void:
 	# 远端玩家不做输入，只由同步器更新 transform
 	if not is_multiplayer_authority():
@@ -447,24 +736,107 @@ func _physics_process(delta: float) -> void:
 	if ps != null and ps.state != PlayerState.State.ALIVE:
 		# DOWN/DEAD：移动禁用（DOWN 视角保留，DEAD 视角在 _unhandled_input 冻结）
 		velocity = Vector3.ZERO
+		_cancel_parkour()
+		return
+	_slide_cooldown = maxf(_slide_cooldown - delta, 0.0)
+	_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)
+	if Input.is_action_just_pressed("jump"):
+		_jump_buffer_timer = JUMP_BUFFER_TIME
+	if _vaulting:
+		_tick_vault(delta)
 		return
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	if direction != Vector3.ZERO:
-		velocity.x = direction.x * WALK_SPEED
-		velocity.z = direction.z * WALK_SPEED
+	if is_on_floor():
+		_coyote_timer = COYOTE_TIME
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, WALK_SPEED)
-		velocity.z = move_toward(velocity.z, 0.0, WALK_SPEED)
+		_coyote_timer = maxf(_coyote_timer - delta, 0.0)
+	if _slide_timer > 0.0:
+		_slide_timer = maxf(_slide_timer - delta, 0.0)
+		var slide_speed := lerpf(WALK_SPEED, SLIDE_START_SPEED, _slide_timer / SLIDE_DURATION)
+		velocity.x = _slide_direction.x * slide_speed
+		velocity.z = _slide_direction.z * slide_speed
+	else:
+		var sprinting := Input.is_action_pressed("sprint") and direction != Vector3.ZERO and is_on_floor()
+		var target_speed := SPRINT_SPEED if sprinting else WALK_SPEED
+		var target := direction * target_speed
+		var acceleration := AIR_ACCEL if not is_on_floor() else (GROUND_ACCEL if direction != Vector3.ZERO else GROUND_DECEL)
+		velocity.x = move_toward(velocity.x, target.x, acceleration * delta)
+		velocity.z = move_toward(velocity.z, target.z, acceleration * delta)
+		_camera.fov = move_toward(_camera.fov, 80.0 if sprinting else 75.0, delta * 18.0)
+	_head.position.y = move_toward(_head.position.y, 1.05 if _slide_timer > 0.0 else 1.6, delta * 4.5)
 	if not is_on_floor():
 		# 注意：get_gravity().y 为负（默认 -9.8），必须 **加** 它才会向下加速；
 		# 之前写成减号导致反重力（跳跃后会越飘越高，M1-ZOMBIE 与丧尸同源，f5ac73c 引入）
 		velocity.y = velocity.y + get_gravity().y * delta
-	if Input.is_action_just_pressed("jump") and is_on_floor():
+	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		if is_on_floor() and _try_start_vault():
+			_jump_buffer_timer = 0.0
+			return
 		velocity.y = JUMP_VELOCITY
+		_jump_buffer_timer = 0.0
+		_coyote_timer = 0.0
 		SfxPool.play_3d("player_jump", global_position)
 	move_and_slide()
 	# 自动武器连发轮询：按住左键对 auto 武器持续开火（半自动按一次打一发，不连发）
 	_poll_auto_fire()
 	# 脚步/落地音频（仅本地玩家；素材缺失静默，就位即生效）
 	_tick_movement_sfx(delta)
+
+
+func _try_start_slide() -> void:
+	if not is_on_floor() or _slide_timer > 0.0 or _slide_cooldown > 0.0:
+		return
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	if horizontal.length() < SPRINT_SPEED - 0.25:
+		return
+	_slide_direction = horizontal.normalized()
+	_slide_timer = SLIDE_DURATION
+	_slide_cooldown = SLIDE_DURATION + SLIDE_COOLDOWN
+
+
+func _try_start_vault() -> bool:
+	if not is_on_floor() or _slide_timer > 0.0:
+		return false
+	var forward := -global_basis.z.normalized()
+	var space := get_world_3d().direct_space_state
+	var exclude := [get_rid()]
+	var low_from := global_position + Vector3.UP * 0.65
+	var low_hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(low_from, low_from + forward * 1.0, 1, exclude))
+	if low_hit.is_empty():
+		return false
+	var high_from := global_position + Vector3.UP * 1.25
+	if not space.intersect_ray(PhysicsRayQueryParameters3D.create(high_from, high_from + forward * 1.0, 1, exclude)).is_empty():
+		return false
+	var landing_probe := global_position + forward * 1.35 + Vector3.UP * 1.6
+	var floor_hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(landing_probe, landing_probe - Vector3.UP * 2.2, 1, exclude))
+	if floor_hit.is_empty() or (floor_hit.normal as Vector3).y < 0.7:
+		return false
+	var landing := (floor_hit.position as Vector3) + Vector3.UP * 0.05
+	var ceiling_hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(landing + Vector3.UP * 0.1, landing + Vector3.UP * 1.85, 1, exclude))
+	if not ceiling_hit.is_empty():
+		return false
+	_vaulting = true
+	_vault_elapsed = 0.0
+	_vault_from = global_position
+	_vault_to = landing
+	velocity = Vector3.ZERO
+	return true
+
+
+func _tick_vault(delta: float) -> void:
+	_vault_elapsed += delta
+	var t := clampf(_vault_elapsed / VAULT_DURATION, 0.0, 1.0)
+	var position := _vault_from.lerp(_vault_to, t)
+	position.y += sin(t * PI) * 0.35
+	global_position = position
+	if t >= 1.0:
+		_vaulting = false
+		velocity = Vector3.ZERO
+
+
+func _cancel_parkour() -> void:
+	_slide_timer = 0.0
+	_vaulting = false
+	_head.position.y = 1.6
+	_camera.fov = 75.0

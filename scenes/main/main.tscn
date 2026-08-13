@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="2_hud"]
@@ -8,10 +8,21 @@
 [ext_resource type="Script" path="res://scripts/gameplay/level_advance.gd" id="6_level"]
 [ext_resource type="Script" path="res://scripts/gameplay/loot_manager.gd" id="7_loot"]
 [ext_resource type="PackedScene" path="res://scenes/ui/scoreboard.tscn" id="8_scoreboard"]
+[ext_resource type="Script" path="res://scripts/fx/tracer_pool.gd" id="9_tracer"]
+[ext_resource type="Script" path="res://scripts/gameplay/performance_monitor.gd" id="10_perf"]
+[ext_resource type="PackedScene" path="res://scenes/environment/weapon_stand.tscn" id="11_weapon_stand"]
+[ext_resource type="PackedScene" path="res://scenes/environment/throwable_supply.tscn" id="12_throwable_supply"]
+[ext_resource type="Script" path="res://scripts/fx/aoe_fx_pool.gd" id="13_aoe_pool"]
+[ext_resource type="Script" path="res://scripts/gameplay/fire_zone_pool.gd" id="14_fire_pool"]
+[ext_resource type="Script" path="res://scripts/gameplay/enemy_lod_manager.gd" id="15_lod"]
+[ext_resource type="Script" path="res://scripts/fx/blood_decal_pool.gd" id="16_blood_decal"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
-sky_top_color = Color(0.25, 0.45, 0.75, 1)
-sky_horizon_color = Color(0.65, 0.75, 0.85, 1)
+sky_top_color = Color(0.055, 0.078, 0.125, 1)
+sky_horizon_color = Color(0.165, 0.192, 0.251, 1)
+sky_curve = 0.2
+ground_bottom_color = Color(0.05, 0.06, 0.08, 1)
+ground_horizon_color = Color(0.165, 0.192, 0.251, 1)
 
 [sub_resource type="Sky" id="Sky_1"]
 sky_material = SubResource("ProceduralSkyMaterial_1")
@@ -19,6 +30,10 @@ sky_material = SubResource("ProceduralSkyMaterial_1")
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 2
 sky = SubResource("Sky_1")
+fog_enabled = true
+fog_light_color = Color(0.165, 0.192, 0.251, 1)
+fog_light_energy = 1.0
+fog_density = 0.015
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -29,7 +44,9 @@ script = ExtResource("1_main")
 environment = SubResource("Environment_1")
 
 [node name="Sun" type="DirectionalLight3D" parent="World"]
-rotation_degrees = Vector3(-45, -30, 0)
+rotation_degrees = Vector3(-55, -30, 0)
+light_color = Color(0.478, 0.549, 0.722, 1)
+light_energy = 0.4
 shadow_enabled = true
 
 [node name="Level" type="Node3D" parent="World"]
@@ -46,6 +63,26 @@ supply_type = 0
 position = Vector3(7, 0, 2)
 supply_type = 1
 
+[node name="WeaponStandShotgun" parent="World/Pickups" instance=ExtResource("11_weapon_stand")]
+position = Vector3(-8, 0, -6)
+weapon_id = "shotgun"
+
+[node name="WeaponStandRifle" parent="World/Pickups" instance=ExtResource("11_weapon_stand")]
+position = Vector3(8, 0, -1)
+weapon_id = "rifle"
+
+[node name="WeaponStandSmg" parent="World/Pickups" instance=ExtResource("11_weapon_stand")]
+position = Vector3(18, 0, -3)
+weapon_id = "smg"
+
+[node name="GrenadeSupply" parent="World/Pickups" instance=ExtResource("12_throwable_supply")]
+position = Vector3(-3, 0, -5)
+throwable_type = "grenade"
+
+[node name="MolotovSupply" parent="World/Pickups" instance=ExtResource("12_throwable_supply")]
+position = Vector3(13, 0, -2)
+throwable_type = "molotov"
+
 [node name="Players" type="Node3D" parent="."]
 
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
@@ -53,8 +90,16 @@ spawn_path = NodePath("../Players")
 
 [node name="Zombies" type="Node3D" parent="."]
 
+[node name="Projectiles" type="Node3D" parent="."]
+
+[node name="TracerPool" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("9_tracer")
+
 [node name="ZombieSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../Zombies")
+
+[node name="ProjectileSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Projectiles")
 
 [node name="PickupSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../World/Pickups")
@@ -69,6 +114,21 @@ script = ExtResource("6_level")
 
 [node name="LootManager" type="Node" parent="Gameplay"]
 script = ExtResource("7_loot")
+
+[node name="PerformanceMonitor" type="Node" parent="Gameplay"]
+script = ExtResource("10_perf")
+
+[node name="FireZonePool" type="Node3D" parent="Gameplay"]
+script = ExtResource("14_fire_pool")
+
+[node name="EnemyLodManager" type="Node" parent="Gameplay"]
+script = ExtResource("15_lod")
+
+[node name="AoeFxPool" type="Node3D" parent="."]
+script = ExtResource("13_aoe_pool")
+
+[node name="BloodDecalPool" type="Node3D" parent="."]
+script = ExtResource("16_blood_decal")
 
 [node name="HUD" parent="." instance=ExtResource("2_hud")]
 

@@ -11,7 +11,7 @@
 class_name CheckpointManager
 extends RefCounted
 
-const VERSION := 3
+const VERSION := 4
 const COMPLETE_PHASE := 5
 const CheckpointValidation := preload("res://scripts/gameplay/checkpoint_validation.gd")
 const SAVE_DIR := "user://save"
@@ -132,7 +132,14 @@ static func capture_equipment(player: Node) -> Dictionary:
 			active_weapon = weapon_id
 	if magazines.is_empty():
 		return {}
-	return {"active_weapon": active_weapon, "magazines": magazines}
+	return {
+		"active_weapon": active_weapon,
+		"primary_weapon": String(player.get("primary_weapon_id")),
+		"claimed_weapon_stands": player.get("claimed_weapon_stands").duplicate(),
+		"grenade_count": int(player.get("grenade_count")),
+		"molotov_count": int(player.get("molotov_count")),
+		"magazines": magazines,
+	}
 
 
 ## 将已校验的装备快照交给玩家公开入口恢复。

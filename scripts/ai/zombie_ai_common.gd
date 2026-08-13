@@ -14,7 +14,7 @@ const ATTACK_DAMAGE := 10.0      # 每次近战伤害
 const ATTACK_WINDUP := 0.5       # 秒，前摇（表现由 S6 接）
 const ATTACK_COOLDOWN := 1.0     # 秒，攻击冷却
 const RETARGET_INTERVAL := 1.5   # 秒，重算朝向/移动方向（简化导航）
-const MOVE_SPEED := 3.0          # 米/秒，追踪速度
+const MOVE_SPEED := 2.5          # 米/秒，追踪速度
 const AVOID_SECONDS := 2.0       # 无导航网格时沿碰撞面绕行的最长时间
 const DEATH_FADE_TIME := 0.6     # 秒，死亡后 Visual 缩放淡出
 const DEATH_CLEANUP_DELAY := 1.5 # 秒，死亡后清理（M2-S3a：延迟到回池，防泄漏）
@@ -32,6 +32,11 @@ var _windup_timer := 0.0
 var _navigation_agent: NavigationAgent3D = null
 var _avoid_dir := Vector3.ZERO
 var _avoid_timer := 0.0
+
+## 行走摆动（M3-ART-P2 方案 B：无骨骼静态网格 + 代码 transform 摆动，所有端本地视觉表现）
+var _visual: Node3D = null
+var _sway_phase := 0.0
+var _sway_time := 0.0
 
 ## 死亡表现/清理 tween 引用：回池时须 kill，防淡出/清理计时作用于复活的丧尸（M2-S3a）
 var _fade_tween: Tween = null
@@ -51,6 +56,9 @@ func _ready() -> void:
 	_body = get_parent() as CharacterBody3D
 	if _body == null:
 		return
+	_visual = _body.get_node_or_null("Visual") as Node3D
+	_sway_phase = randf() * TAU  # 相位随机：防整群同步摆动（美术方向 §7.2）
+	_sway_time = 0.0
 	_ensure_navigation_agent()
 	_ensure_growl_ctrl()  # M3-S7：嘶吼控制器挂接（幂等：复用节点仅重设随机相位）
 	var health := get_node_or_null("../Health") as Damageable
@@ -59,6 +67,40 @@ func _ready() -> void:
 		health.died.connect(_on_died)
 	ZombieAIBudget.ensure_loaded()  # 分帧预算参数（director.json ai_budget，M3-S4）
 	_apply_visibility_range()
+
+
+## 行走摆动：所有端本地执行（视觉表现，不进同步）。振幅按状态区分——
+## 追击 bob/前倾/倾斜明显，待机轻微呼吸，死亡冻结（淡出由 _play_death_fx 缩放接管）。
+func _process(delta: float) -> void:
+	_tick_visual_sway(delta)
+
+
+func _tick_visual_sway(delta: float) -> void:
+	if _visual == null:
+		return
+	if state == State.DEAD:
+		return
+	_sway_time += delta
+	var t := _sway_time
+	var phase := _sway_phase
+	var bob := 0.0      # 上下浮动幅度（米）
+	var lean := 0.0     # 前倾（弧度）
+	var freq := 3.0     # 待机呼吸频率
+	match state:
+		State.IDLE:
+			bob = 0.012
+			lean = 0.0
+		State.CHASE:
+			bob = 0.05
+			lean = 0.10
+			freq = 8.0
+		State.ATTACK:
+			bob = 0.02
+			lean = 0.20
+			freq = 4.0
+	_visual.position.y = sin(t * freq + phase) * bob
+	_visual.rotation.x = -lean + sin(t * freq * 0.5 + phase) * bob * 0.6
+	_visual.rotation.z = sin(t * freq * 0.7 + phase * 1.7) * bob * 0.8
 
 
 func _physics_process(delta: float) -> void:
@@ -288,16 +330,26 @@ func _broadcast_zombie_died() -> void:
 		zombie_died()
 
 
-## 死亡表现（S6）：血雾爆发 + Visual 缩放淡出（tween 引用留存，回池复位时 kill）
+## 死亡表现（S6）：血雾爆发 + Visual 缩放淡出（tween 引用留存，回池复位时 kill）+ 地面血渍贴花
 func _play_death_fx() -> void:
 	var blood := _body.get_node_or_null("BloodPuff") as GPUParticles3D
 	if blood != null:
 		blood.restart()
+	_spawn_blood_decal()
 	var visual := _body.get_node_or_null("Visual") as Node3D
 	if visual != null:
 		_fade_tween = create_tween()
+		_fade_tween.set_parallel(true)
 		_fade_tween.tween_property(visual, "scale", Vector3.ZERO, DEATH_FADE_TIME)
+		_fade_tween.tween_property(visual, "position:y", visual.position.y - 0.3, DEATH_FADE_TIME)
 	_start_death_cleanup()
+
+
+## 地面血渍贴花（所有端本地视觉）：死亡点投射血迹（美术方向 §3.6；池存在才生效）
+func _spawn_blood_decal() -> void:
+	var pool := get_tree().get_first_node_in_group("blood_decal_pool")
+	if pool != null:
+		pool.call("spawn_decal", _body.global_position)
 
 
 ## 死亡后定时清理（M2-S3a：回调改回池而非 queue_free；客户端/无池场景走 queue_free 兜底）
@@ -339,6 +391,10 @@ func reset_for_pool() -> void:
 	_body.collision_mask = COLLISION_MASK
 	_body.velocity = Vector3.ZERO
 	_body.rotation = Vector3.ZERO
+	if _visual != null:
+		_visual.position = Vector3.ZERO
+		_visual.rotation = Vector3.ZERO
+	_sway_time = 0.0
 	var sync := _body.get_node_or_null("ZombieSync") as MultiplayerSynchronizer
 	if sync != null:
 		sync.set_multiplayer_authority(NetworkManager.SERVER_ID)  # ZombieSync 复位（服务器角度）

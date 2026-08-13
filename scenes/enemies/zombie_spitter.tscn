@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/zombie_ai_spitter.gd" id="1_ai"]
 [ext_resource type="Script" path="res://scripts/enemies/zombie_health.gd" id="2_health"]
@@ -9,6 +9,13 @@
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
 radius = 0.5
 height = 2.1
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body_hitbox"]
+radius = 0.52
+height = 1.55
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_head_hitbox"]
+radius = 0.3
 
 [node name="Spitter" type="CharacterBody3D"]
 collision_layer = 4
@@ -43,5 +50,13 @@ script = ExtResource("2_health")
 script = ExtResource("3_hitbox")
 
 [node name="HitboxShape" type="CollisionShape3D" parent="Hitbox"]
-position = Vector3(0, 1.1, 0)
-shape = SubResource("CapsuleShape3D_collision")
+position = Vector3(0, 0.82, 0)
+shape = SubResource("CapsuleShape3D_body_hitbox")
+
+[node name="HeadHitbox" type="Area3D" parent="."]
+script = ExtResource("3_hitbox")
+hit_zone = "head"
+
+[node name="HeadShape" type="CollisionShape3D" parent="HeadHitbox"]
+position = Vector3(0, 1.72, 0)
+shape = SubResource("SphereShape3D_head_hitbox")
