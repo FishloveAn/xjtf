@@ -162,7 +162,8 @@ PARENTS = {"pelvis": "root", "spine": "pelvis", "head": "spine", "upper_arm_l": 
 CHARACTERS = {
     "char_goblin_common_lean.glb": {"kind": "lean", "height": 1.72, "width": 0.62, "base": [0.48, 0.39, 0.29, 1], "accent": [0.18, 0.12, 0.09, 1], "refs": 2},
     "char_goblin_common_strong.glb": {"kind": "strong", "height": 1.92, "width": 1.03, "base": [0.45, 0.57, 0.24, 1], "accent": [0.12, 0.10, 0.08, 1], "refs": 2},
-    "char_goblin_charger.glb": {"kind": "charger", "height": 2.10, "width": 1.48, "base": [1.0, 0.29, 0.05, 1], "accent": [1.0, 0.78, 0.32, 1], "refs": 2},
+    # 注意：char_goblin_charger.glb 已由带纹理版本手工替换（2026-08-13），不再程序化生成，
+    # 否则运行本脚本会覆盖正式资产。若需重建，先备份正式 GLB。
     "char_goblin_spitter.glb": {"kind": "spitter", "height": 1.94, "width": 1.20, "base": [0.58, 0.61, 0.15, 1], "accent": [0.22, 1.0, 0.32, 1], "refs": 2, "emissive": True},
     "char_goblin_hunter.glb": {"kind": "hunter", "height": 1.69, "width": 0.82, "base": [0.12, 0.63, 0.48, 1], "accent": [0.12, 1.0, 0.78, 1], "refs": 2, "emissive": True},
     "char_goblin_boomer.glb": {"kind": "boomer", "height": 1.87, "width": 1.34, "base": [0.48, 0.13, 0.08, 1], "accent": [1.0, 0.24, 0.03, 1], "refs": 2, "emissive": True},
@@ -375,6 +376,47 @@ def write_prop(path, kind):
     print(f"生成 {path.relative_to(ROOT)}：{triangles} tris")
 
 
+def write_throwable(path, kind):
+    """投掷物模型：手榴弹（球形主体+引信+菠萝纹）/ 燃烧瓶（瓶身+瓶颈+火焰布条）。
+    材质 0=主体、材质 1=强调（燃烧瓶布条 emissive）。"""
+    g = Geometry()
+    if kind == "grenade":
+        g.ellipsoid((0, 0.10, 0), (0.09, 0.11, 0.09), 0, 0, 8, 5)
+        g.frustum((0, 0.20, 0), (0, 0.26, 0), 0.025, 0.02, 0, 1, 6)
+        g.ellipsoid((0.05, 0.27, 0), (0.03, 0.015, 0.015), 0, 1, 6, 3)
+        for i in range(8):
+            a = 2.0 * math.pi * i / 8.0
+            g.box((math.cos(a) * 0.08, 0.10, math.sin(a) * 0.08), (0.03, 0.03, 0.03), 0, 0)
+        base = [0.23, 0.29, 0.22, 1]
+        accent = [0.62, 0.64, 0.60, 1]
+        emissive = False
+    else:
+        g.frustum((0, 0.02, 0), (0, 0.20, 0), 0.075, 0.055, 0, 0, 7)
+        g.frustum((0, 0.20, 0), (0, 0.30, 0), 0.055, 0.024, 0, 0, 6)
+        g.box((0, 0.315, 0), (0.05, 0.03, 0.05), 0, 1)
+        base = [0.38, 0.32, 0.24, 1]
+        accent = [1.0, 0.45, 0.05, 1]
+        emissive = True
+    binary = BinaryDocument()
+    primitives, triangles = [], 0
+    for material_index in (0, 1):
+        group = g.groups[material_index]
+        triangles += len(group["p"]) // 3
+        mins = tuple(min(point[i] for point in group["p"]) for i in range(3))
+        maxs = tuple(max(point[i] for point in group["p"]) for i in range(3))
+        primitives.append({"attributes": {"POSITION": binary.accessor(group["p"], 5126, "VEC3", mins, maxs),
+                                             "NORMAL": binary.accessor(group["n"], 5126, "VEC3")}, "material": material_index, "mode": 4})
+    doc = {"asset": {"version": "2.0", "generator": "xjtf procedural low-poly pipeline", "extras": {"xjtf": {
+        "triangles": triangles, "forward": "-Z", "style": "stylized_low_poly"}}}, "scene": 0,
+        "scenes": [{"name": path.stem, "nodes": [0]}], "nodes": [{"name": path.stem, "mesh": 0}],
+        "meshes": [{"name": path.stem + "_mesh", "primitives": primitives}],
+        "materials": [material(base, False, "主体"), material(accent, emissive, "强调")],
+        "extensionsUsed": ["KHR_materials_emissive_strength"] if emissive else [],
+        "buffers": [{"byteLength": len(binary.data)}], "bufferViews": binary.views, "accessors": binary.accessors}
+    write_glb(path, doc, binary.data)
+    print(f"生成 {path.relative_to(ROOT)}：{triangles} tris")
+
+
 def static_humanoid_geometry(kind):
     g = Geometry()
     if kind == "player":
@@ -478,6 +520,8 @@ def main():
         write_character(CHAR_DIR / filename, spec)
     write_prop(PROP_DIR / "prop_ammo_01.glb", "ammo")
     write_prop(PROP_DIR / "prop_medkit_01.glb", "medkit")
+    write_throwable(PROP_DIR / "prop_grenade_01.glb", "grenade")
+    write_throwable(PROP_DIR / "prop_molotov_01.glb", "molotov")
     write_static_humanoid(CHAR_DIR / "char_player_01.glb", "player")
     write_static_humanoid(CHAR_DIR / "char_zombie_common_02.glb", "zombie_strong")
     write_arms_view(WEAPON_DIR / "wep_arms_view.glb")

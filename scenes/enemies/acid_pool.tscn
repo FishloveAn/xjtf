@@ -1,19 +1,45 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/acid_pool.gd" id="1_acid"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_acid"]
+[sub_resource type="StandardMaterial3D" id="mat_acid"]
 transparency = 1
+shading_mode = 0
 albedo_color = Color(0.3, 0.9, 0.3, 0.45)
+emission_enabled = true
+emission = Color(0.2, 0.8, 0.2, 1)
+emission_energy_multiplier = 0.6
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_visual"]
+[sub_resource type="CylinderMesh" id="mesh_visual"]
 top_radius = 2.5
 bottom_radius = 2.5
 height = 0.06
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_area"]
+[sub_resource type="CylinderShape3D" id="shape_area"]
 radius = 2.5
 height = 0.3
+
+[sub_resource type="StandardMaterial3D" id="mat_bubble"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.4, 1.0, 0.4, 0.5)
+
+[sub_resource type="SphereMesh" id="mesh_bubble"]
+radius = 0.05
+height = 0.1
+material = SubResource("mat_bubble")
+
+[sub_resource type="ParticleProcessMaterial" id="pp_bubble"]
+emission_shape = 3
+emission_box_extents = Vector3(1, 0.05, 1)
+direction = Vector3(0, 1, 0)
+spread = 2.0
+initial_velocity_min = 0.3
+initial_velocity_max = 0.8
+gravity = Vector3(0, 0.5, 0)
+scale_min = 0.5
+scale_max = 1.5
+color = Color(0.5, 1.0, 0.5, 0.6)
 
 [node name="AcidPool" type="Area3D"]
 collision_layer = 0
@@ -24,9 +50,17 @@ script = ExtResource("1_acid")
 
 [node name="Visual" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.03, 0)
-mesh = SubResource("CylinderMesh_visual")
-material_override = SubResource("StandardMaterial3D_acid")
+mesh = SubResource("mesh_visual")
+material_override = SubResource("mat_acid")
+
+[node name="Bubbles" type="GPUParticles3D" parent="."]
+position = Vector3(0, 0.03, 0)
+emitting = true
+amount = 16
+lifetime = 1.2
+process_material = SubResource("pp_bubble")
+mesh = SubResource("mesh_bubble")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
 position = Vector3(0, 0.15, 0)
-shape = SubResource("CylinderShape3D_area")
+shape = SubResource("shape_area")

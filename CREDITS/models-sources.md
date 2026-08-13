@@ -58,7 +58,11 @@
 | `char_zombie_common_02.glb` | 项目自研，参考 `zombie_common_strong.png` | 项目内部生成 | 普通丧尸壮型，536 tris、2 材质、1.79m |
 | `char_zombie_spitter_01.glb` | 项目自研重建，参考 `zombie_spitter.png` | 项目内部生成 | 丧尸喷吐者备选，748 tris、12 骨骼 + 6 动画 |
 | `props/prop_ammo_01.glb` / `props/prop_medkit_01.glb` | 项目自研 | 项目内部生成 | 正式弹药箱/医疗包，已替换 BoxMesh |
+| `props/prop_grenade_01.glb` / `props/prop_molotov_01.glb` | 项目自研 | 项目内部生成 | 正式手榴弹/燃烧瓶，已替换占位 SphereMesh/CapsuleMesh |
+| `wep_arms_view.glb` | 项目自研 | 项目内部生成 | 第一人称持枪手臂 view 模型，98 tris、2 材质，随皮肤方案换色 |
 | `wep_pistol/rifle/shotgun/smg_01.glb` 材质色因子 | 原网格仍为 Quaternius CC0；项目内二次着色 | CC0 + 项目修改 | 手枪黄、霰弹橙、步枪蓝、冲锋枪青蓝 |
+
+> 2026-08-13 追加：火焰区（`fire_zone.tscn`）与酸液池（`acid_pool.tscn`）为场景内程序化 VFX（GPUParticles3D 火焰/气泡粒子 + emissive 材质），全部项目自研，无外部素材，不入库独立 GLB。
 
 ## 处理说明（M3-ART-P0）
 

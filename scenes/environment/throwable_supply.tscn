@@ -1,14 +1,13 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/throwable_supply.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/props/prop_grenade_01.glb" id="2_grenade"]
+[ext_resource type="PackedScene" path="res://assets/models/props/prop_molotov_01.glb" id="3_molotov"]
 
-[sub_resource type="SphereMesh" id="1"]
-radius = 0.18
-height = 0.36
-
-[sub_resource type="CapsuleMesh" id="2"]
-radius = 0.1
-height = 0.4
+[sub_resource type="StandardMaterial3D" id="mat_pedestal"]
+albedo_color = Color(0.3, 0.34, 0.4, 1)
+metallic = 0.6
+roughness = 0.5
 
 [node name="ThrowableSupply" type="Node3D"]
 script = ExtResource("1")
@@ -17,12 +16,13 @@ script = ExtResource("1")
 radius = 0.45
 height = 0.15
 position = Vector3(0, 0.075, 0)
+material = SubResource("mat_pedestal")
 
-[node name="Grenade" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.45, 0)
-mesh = SubResource("1")
+[node name="Grenade" parent="." instance=ExtResource("2_grenade")]
+position = Vector3(0, 0.35, 0)
+scale = Vector3(1.5, 1.5, 1.5)
 
-[node name="Molotov" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.45, 0)
-mesh = SubResource("2")
+[node name="Molotov" parent="." instance=ExtResource("3_molotov")]
+position = Vector3(0, 0.35, 0)
+scale = Vector3(1.5, 1.5, 1.5)
 visible = false

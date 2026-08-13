@@ -64,7 +64,7 @@ func _apply_damage() -> void:
 		ps.take_damage(dps * TICK_INTERVAL, attacker)
 
 
-## 数据驱动几何：radius 变更时同步视觉圆盘与碰撞柱。
+## 数据驱动几何：radius 变更时同步视觉圆盘、气泡粒子与碰撞柱。
 ## mesh/shape 为场景资源须 duplicate 后再改，否则会污染 PackedScene 共享资源
 func _apply_geometry() -> void:
 	var visual := get_node_or_null("Visual") as MeshInstance3D
@@ -73,6 +73,9 @@ func _apply_geometry() -> void:
 		var cm := visual.mesh as CylinderMesh
 		cm.top_radius = radius
 		cm.bottom_radius = radius
+	var bubbles := get_node_or_null("Bubbles") as GPUParticles3D
+	if bubbles != null:
+		bubbles.scale = Vector3(radius, 1.0, radius)
 	var area := get_node_or_null("CollisionShape") as CollisionShape3D
 	if area != null and area.shape is CylinderShape3D:
 		area.shape = area.shape.duplicate()

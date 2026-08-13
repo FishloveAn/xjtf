@@ -28,6 +28,10 @@ func activate(position: Vector3, owner_id: int, zone_radius: float, zone_duratio
 	_active = true
 	visible = true
 	$Visual.scale = Vector3(radius, 0.05, radius)
+	var flames := get_node_or_null("Flames") as GPUParticles3D
+	if flames != null:
+		flames.scale = Vector3(radius, 1.0, radius)
+		flames.emitting = true
 	set_physics_process(true)
 
 
@@ -49,6 +53,9 @@ func _physics_process(delta: float) -> void:
 	if _remaining <= 0.0:
 		_active = false
 		visible = false
+		var flames := get_node_or_null("Flames") as GPUParticles3D
+		if flames != null:
+			flames.emitting = false
 		set_physics_process(false)
 
 

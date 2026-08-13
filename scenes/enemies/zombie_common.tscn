@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/zombie_ai_common.gd" id="1_ai"]
 [ext_resource type="Script" path="res://scripts/enemies/zombie_health.gd" id="2_health"]
@@ -7,13 +7,6 @@
 [ext_resource type="PackedScene" path="res://assets/models/characters/char_zombie_common_01.glb" id="5_zombie"]
 [ext_resource type="PackedScene" path="res://assets/models/characters/char_zombie_common_02.glb" id="6_zombie_strong"]
 [ext_resource type="Script" path="res://scripts/enemies/common_visual_variant.gd" id="7_variant"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_zombie"]
-albedo_color = Color(0.54, 0.48, 0.4, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_visual"]
-size = Vector3(0.6, 0.9, 0.35)
-material = SubResource("StandardMaterial3D_zombie")
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
 radius = 0.35
