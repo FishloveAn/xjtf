@@ -1,7 +1,7 @@
 {
   "asset_name": "char_goblin_charger",
   "concept_images": [
-    "项目文档/02-设计/怪概念设计/goblin_charger.png"
+    "docs/项目文档/02-设计/怪概念设计/goblin_charger.png"
   ],
   "role": "冲撞型特殊敌人",
   "silhouette": {

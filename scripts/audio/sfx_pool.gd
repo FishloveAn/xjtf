@@ -7,7 +7,7 @@
 ##       door（开门）、pickup_item/supply_point（拾取）、zombie_ai（嘶吼/死亡）、wave_manager（尸潮警报）等调用
 ## 输出：3D 事件在 world_pos 定位播放；2D 事件（警报/UI）全局不衰减（Audio Bus: SFX/UI）
 ## 谁调用：任意端本地播放（视觉层，tech-plan §4.2；服务器不参与音效结算）
-## 规范：池大小 3D=10 / 2D=4；事件定义全量见 项目文档/02-设计/02-设计-音频-系统设计.md §5（字段说明）；
+## 规范：池大小 3D=10 / 2D=4；事件定义全量见 docs/项目文档/02-设计/02-设计-音频-系统设计.md §5（字段说明）；
 ##       短音效 .ogg（Kenney 入库）；总线结构见 default_bus_layout.tres
 
 extends Node

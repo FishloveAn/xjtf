@@ -13,7 +13,7 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = ROOT / "art_source" / "characters"
-CONCEPT_ROOT = ROOT / "项目文档" / "02-设计" / "怪概念设计"
+CONCEPT_ROOT = ROOT / "docs" / "项目文档" / "02-设计" / "怪概念设计"
 
 
 SPECS = {

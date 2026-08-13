@@ -21,4 +21,4 @@
 
 ### Domain docs
 
-采用单领域布局：根目录 `CONTEXT.md`、架构决策 `docs/adr/`、完整资料 `项目文档/`。详见 `docs/agents/domain.md`。
+采用单领域布局：唯一文档文件夹 `docs/` —— 领域上下文 `docs/CONTEXT.md`、架构决策 `docs/adr/`（索引见 `docs/adr/README.md`）、完整资料 `docs/项目文档/`（入口 `docs/项目文档/README-总目录.md`）。详见 `docs/agents/domain.md`。

@@ -1,6 +1,6 @@
 extends SceneTree
 ## 模型规格校验器（Model Spec Checker）
-## 按 项目文档/02-设计/02-设计-美术-替换清单-M3.md §1 预算表自动检查 assets/models/ 下所有 .glb
+## 按 docs/项目文档/02-设计/02-设计-美术-替换清单-M3.md §1 预算表自动检查 assets/models/ 下所有 .glb
 ## 检查项：tris 预算 / 材质数 ≤2 / 身高（角色） / 骨骼（普通丧尸应无、特感应有）
 ## 用法：
 ##   godot --headless --script tools/check_model_spec.gd                 # 检查全部
