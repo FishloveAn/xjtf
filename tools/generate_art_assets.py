@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CHAR_DIR = ROOT / "assets" / "models" / "characters"
 PROP_DIR = ROOT / "assets" / "models" / "props"
+WEAPON_DIR = ROOT / "assets" / "models" / "weapons"
 
 
 def add(a, b):
@@ -425,6 +426,37 @@ def write_static_humanoid(path, kind):
     print(f"重建 {path.relative_to(ROOT)}：{triangles} tris")
 
 
+def write_arms_view(path):
+    """第一人称手臂 view 模型（右手持枪，相机局部 -Z 朝前，Y 向上）。
+    材质 0=手臂皮肤、材质 1=袖子/手套，运行时由皮肤系统按 surface index 换色。"""
+    g = Geometry()
+    # 袖子（材质 1 accent）：肘 → 前臂中点
+    g.frustum((0.30, -0.34, -0.04), (0.22, -0.20, -0.22), 0.062, 0.052, 0, 1, 7)
+    # 前臂（材质 0 skin）：前臂中点 → 手腕
+    g.frustum((0.22, -0.20, -0.22), (0.16, -0.12, -0.42), 0.052, 0.040, 0, 0, 7)
+    # 手（材质 0 skin）：握枪姿势，沿 -Z 拉长
+    g.ellipsoid((0.14, -0.09, -0.49), (0.042, 0.048, 0.085), 0, 0, 7, 4)
+    binary = BinaryDocument()
+    primitives, triangles = [], 0
+    for material_index in (0, 1):
+        group = g.groups[material_index]
+        triangles += len(group["p"]) // 3
+        mins = tuple(min(point[i] for point in group["p"]) for i in range(3))
+        maxs = tuple(max(point[i] for point in group["p"]) for i in range(3))
+        primitives.append({"attributes": {"POSITION": binary.accessor(group["p"], 5126, "VEC3", mins, maxs),
+                                             "NORMAL": binary.accessor(group["n"], 5126, "VEC3")}, "material": material_index, "mode": 4})
+    base = [0.86, 0.70, 0.58, 1]
+    accent = [0.25, 0.26, 0.28, 1]
+    doc = {"asset": {"version": "2.0", "generator": "xjtf procedural low-poly pipeline", "extras": {"xjtf": {
+        "triangles": triangles, "forward": "-Z", "style": "stylized_low_poly"}}}, "scene": 0,
+        "scenes": [{"name": path.stem, "nodes": [0]}], "nodes": [{"name": path.stem, "mesh": 0}],
+        "meshes": [{"name": path.stem + "_mesh", "primitives": primitives}],
+        "materials": [material(base, False, "手臂皮肤"), material(accent, False, "袖子/手套")],
+        "buffers": [{"byteLength": len(binary.data)}], "bufferViews": binary.views, "accessors": binary.accessors}
+    write_glb(path, doc, binary.data)
+    print(f"生成 {path.relative_to(ROOT)}：{triangles} tris")
+
+
 def write_glb(path, document, blob):
     path.parent.mkdir(parents=True, exist_ok=True)
     while len(blob) % 4:
@@ -448,6 +480,7 @@ def main():
     write_prop(PROP_DIR / "prop_medkit_01.glb", "medkit")
     write_static_humanoid(CHAR_DIR / "char_player_01.glb", "player")
     write_static_humanoid(CHAR_DIR / "char_zombie_common_02.glb", "zombie_strong")
+    write_arms_view(WEAPON_DIR / "wep_arms_view.glb")
     zombie_spitter = {"kind": "spitter", "species": "zombie", "height": 1.95, "width": 1.10,
                       "base": [0.60, 0.64, 0.18, 1], "accent": [0.22, 1.0, 0.32, 1],
                       "refs": 1, "emissive": True}

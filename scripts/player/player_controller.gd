@@ -75,13 +75,14 @@ var _vault_to := Vector3.ZERO
 const VAULT_DURATION := 0.28
 var _mouse_capture_requested := true
 
-## 幸存者皮肤配色（美术方向 §3.1：换皮不换网，材质 albedo_color 变体；避纯蓝紫，留蓝紫给环境）
-## 按 peer authority 取模分配，所有端对同一玩家算出同一色（第三人称 Body 观感一致）
-const SKIN_COLORS: Array[Color] = [
-	Color(1.0, 0.79, 0.24),   # 安全黄
-	Color(0.24, 0.86, 0.52),  # 医疗绿
-	Color(1.0, 0.48, 0.18),   # 信号橙
-	Color(0.78, 0.80, 0.83),  # 灰白
+## 幸存者皮肤方案（美术方向 §3.1：换皮不换网，材质 albedo_color 变体；避纯蓝紫，留蓝紫给环境）。
+## 每套 = 主体色（body，皮肤/服饰主色）+ 强调色（accent，袖口/胸甲/手套），比单色换皮观感更丰富。
+## 按 peer authority 取模分配，所有端对同一玩家算出同一方案（第三人称 Body 与第一人称手臂观感一致）。
+const SKIN_PALETTES: Array[Dictionary] = [
+	{"body": Color(1.0, 0.79, 0.24), "accent": Color(0.30, 0.22, 0.14)},   # 安全黄 + 深棕
+	{"body": Color(0.24, 0.86, 0.52), "accent": Color(0.08, 0.32, 0.18)},   # 医疗绿 + 深绿
+	{"body": Color(1.0, 0.48, 0.18), "accent": Color(0.35, 0.16, 0.08)},    # 信号橙 + 深红棕
+	{"body": Color(0.78, 0.80, 0.83), "accent": Color(0.28, 0.30, 0.34)},   # 灰白 + 深灰
 ]
 
 ## 第一人称 viewmodel 动画状态（美术方向 §5.1：sway 鼠标随动 / bob 步伐 / recoil 后坐 / reload 换弹下压）
@@ -109,17 +110,21 @@ func _ready() -> void:
 		_capture_mouse.call_deferred()
 
 
-## 幸存者皮肤：按 peer authority 取模选色，遍历 Body 网格 duplicate 材质改 albedo_color（换皮不换网）。
-## 所有端对同一玩家算出同一色（authority 一致），第三人称观感统一；duplicate 避免污染共享材质。
+## 幸存者皮肤：按 peer authority 取模选方案，对 Body（第三人称）与 Arms（第一人称手臂）统一换色。
+## 换皮不换网：按 surface index 决定主体/强调色（surface 0=主体、surface 1=强调），duplicate 材质避免污染共享资源。
 func _apply_skin() -> void:
+	var palette: Dictionary = SKIN_PALETTES[int(get_multiplayer_authority()) % SKIN_PALETTES.size()]
+	var body_color: Color = palette.get("body", Color(1, 1, 1))
+	var accent_color: Color = palette.get("accent", body_color)
 	var body := get_node_or_null("Body") as Node3D
-	if body == null:
-		return
-	var color := SKIN_COLORS[int(get_multiplayer_authority()) % SKIN_COLORS.size()]
-	_apply_skin_recursive(body, color)
+	if body != null:
+		_apply_skin_recursive(body, body_color, accent_color)
+	var arms := get_node_or_null("Head/Camera/ViewMesh/Arms") as Node3D
+	if arms != null:
+		_apply_skin_recursive(arms, body_color, accent_color)
 
 
-func _apply_skin_recursive(node: Node, color: Color) -> void:
+func _apply_skin_recursive(node: Node, body_color: Color, accent_color: Color) -> void:
 	if node is MeshInstance3D:
 		var mi := node as MeshInstance3D
 		var mesh := mi.mesh
@@ -132,10 +137,10 @@ func _apply_skin_recursive(node: Node, color: Color) -> void:
 					continue
 				var dup := mat.duplicate() as Material
 				if dup is StandardMaterial3D:
-					(dup as StandardMaterial3D).albedo_color = color
+					(dup as StandardMaterial3D).albedo_color = accent_color if i >= 1 else body_color
 				mi.set_surface_override_material(i, dup)
 	for child in node.get_children():
-		_apply_skin_recursive(child, color)
+		_apply_skin_recursive(child, body_color, accent_color)
 
 
 ## M2-S5 缺陷修复：4.7 要求同步器 authority 在 _enter_tree 设置（早于 _ready 的 _setup_sync）。

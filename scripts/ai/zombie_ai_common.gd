@@ -85,19 +85,25 @@ func _tick_visual_sway(delta: float) -> void:
 	var phase := _sway_phase
 	var bob := 0.0      # 上下浮动幅度（米）
 	var lean := 0.0     # 前倾（弧度）
+	var sway_x := 0.0   # 左右迈步幅度（米）
 	var freq := 3.0     # 待机呼吸频率
 	match state:
 		State.IDLE:
 			bob = 0.012
 			lean = 0.0
 		State.CHASE:
-			bob = 0.05
-			lean = 0.10
-			freq = 8.0
+			# 步伐随实际水平速度缩放：撞墙/绕障减速时脚步放缓，正常追击贴近满速
+			var h_speed := Vector2(_body.velocity.x, _body.velocity.z).length()
+			var speed_ratio := clampf(h_speed / MOVE_SPEED, 0.25, 1.0)
+			bob = 0.05 * speed_ratio
+			lean = 0.10 * speed_ratio
+			sway_x = 0.02 * speed_ratio
+			freq = 8.0 * speed_ratio
 		State.ATTACK:
 			bob = 0.02
 			lean = 0.20
 			freq = 4.0
+	_visual.position.x = sin(t * freq * 0.5 + phase * 1.3) * sway_x
 	_visual.position.y = sin(t * freq + phase) * bob
 	_visual.rotation.x = -lean + sin(t * freq * 0.5 + phase) * bob * 0.6
 	_visual.rotation.z = sin(t * freq * 0.7 + phase * 1.7) * bob * 0.8

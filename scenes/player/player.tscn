@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/player_state.gd" id="2_player_state"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/weapons/wep_shotgun_01.glb" id="9_shotgun_glb"]
 [ext_resource type="PackedScene" path="res://assets/models/weapons/wep_rifle_01.glb" id="10_rifle_glb"]
 [ext_resource type="PackedScene" path="res://assets/models/weapons/wep_smg_01.glb" id="11_smg_glb"]
+[ext_resource type="PackedScene" path="res://assets/models/weapons/wep_arms_view.glb" id="12_arms_glb"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
 radius = 0.4
@@ -54,6 +55,8 @@ position = Vector3(0.22, -0.19, -1.0)
 
 [node name="SMGMuzzle" type="Marker3D" parent="Head/Camera/ViewMesh"]
 position = Vector3(0.22, -0.17, -0.86)
+
+[node name="Arms" parent="Head/Camera/ViewMesh" instance=ExtResource("12_arms_glb")]
 
 [node name="Body" parent="." instance=ExtResource("7_player_glb")]
 rotation = Vector3(0, 3.14159, 0)
