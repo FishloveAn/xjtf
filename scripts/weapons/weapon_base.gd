@@ -11,6 +11,11 @@
 class_name WeaponBase
 extends Node3D
 
+const MUZZLE_FLASH_SCENE := preload("res://scenes/fx/muzzle_flash.tscn")
+
+signal feedback_received(hit_zone: String, killed: bool)
+signal view_fired  # 本地开火视觉触发（player_controller 监听 → 后坐/枪口火光）
+
 ## 武器 id（对应 data/weapons.json 的 weapons[].id）
 @export var weapon_id := "pistol"
 
@@ -31,13 +36,14 @@ var muzzle_offset := Vector3(0.0, -0.02, -0.4)
 @export var reloading := false
 
 ## 命中碰撞层：世界(1) + 命中区域(3)。玩家层(2)不在内 = 无友伤（MVP）
-const HIT_MASK := 1 | 3
+const HIT_MASK := 1 | Hitbox.HITBOX_LAYER
 
 var _fire_interval := 0.0   # 1 / fire_rate
 var _cooldown_timer := 0.0  # 射速冷却（服务器）
 var _reload_timer := 0.0    # 换弹计时（服务器）
 ## 换弹音监听（M3-S7）：reloading 同步翻转 → 全端本地播 weapon_reload/reload_done（初始化与之一致防误触发）
 var _prev_reloading := false
+var visual_bloom_deg := 0.0
 
 @onready var _weapon_sync: MultiplayerSynchronizer = $WeaponSync
 
@@ -55,6 +61,7 @@ func _enter_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	visual_bloom_deg = maxf(visual_bloom_deg - delta * 4.0, 0.0)
 	if not NetworkManager.is_server():
 		_watch_reload_state()  # 客户端：reloading 同步翻转 → 播换弹音（收到广播才播，不本地猜）
 		return
@@ -158,7 +165,22 @@ func try_reload() -> void:
 
 ## 客户端本地视觉钩子（枪口火花/音效；开火音效本地即时播放，视觉层 tech-plan §4.2）
 func _on_fire_visual() -> void:
+	visual_bloom_deg = minf(visual_bloom_deg + 0.55, 3.0)
 	_play_sfx(weapon_id + "_fire")  # pistol_fire / shotgun_fire
+	view_fired.emit()  # 通知 player_controller 做后坐 + 枪口火光
+	_spawn_muzzle_flash()
+
+
+## 枪口火光（本地视觉）：在枪口点生成一次性闪光 + 点光（§3.6，0.06s 自动释放）
+func _spawn_muzzle_flash() -> void:
+	var parent := get_tree().current_scene as Node3D
+	if parent == null:
+		return
+	var flash := MUZZLE_FLASH_SCENE.instantiate() as Node3D
+	if flash == null:
+		return
+	parent.add_child(flash)
+	flash.global_position = get_visual_muzzle_position()
 
 
 # --- RPC（请求类 any_peer，tech-plan §4.4） ---
@@ -171,6 +193,14 @@ func request_fire(origin: Vector3, dir: Vector3, target_id: int) -> void:
 	var sender: int = multiplayer.get_remote_sender_id()
 	if not _is_player_peer(sender):
 		return  # 防御：请求来源必须为本武器所属玩家
+	var camera := _get_camera()
+	if camera == null or origin.distance_to(camera.global_position) > 1.0:
+		return
+	if not dir.is_finite() or dir.length_squared() < 0.9:
+		return
+	var server_forward := -camera.global_basis.z.normalized()
+	if server_forward.dot(dir.normalized()) < cos(deg_to_rad(20.0)):
+		return
 	_server_fire(origin, dir)
 
 
@@ -201,40 +231,104 @@ func _server_fire(origin: Vector3, dir: Vector3) -> void:
 	mag_current -= 1
 	_cooldown_timer = _fire_interval
 	var player := _get_player()
+	var camera := _get_camera()
+	var visual_origin := get_visual_muzzle_position()
+	if camera != null:
+		origin = camera.global_position
+		dir = -camera.global_basis.z.normalized()
+	else:
+		dir = dir.normalized()
+	var tracer_end := origin + dir * range_m
+	var best_result: Dictionary = {}
+	var total_damage := 0.0
+	var any_kill := false
 	for i in pellets:
 		# 每颗独立 spread（pistol pellets=1 也应用一次；未来无散射武器可 spread_deg=0）
 		var pellet_dir := _apply_spread(dir) if (pellets > 1 or spread_deg > 0.0) else dir
-		_hitscan_pellet(origin, pellet_dir, player)
+		var result := _hitscan_pellet(origin, pellet_dir, player)
+		if not result.is_empty():
+			if i == 0:
+				tracer_end = result.get("position", tracer_end)
+			if result.has("applied_damage"):
+				total_damage += float(result.get("applied_damage", 0.0))
+				any_kill = any_kill or bool(result.get("killed", false))
+				if best_result.is_empty() or bool(result.get("killed", false)) \
+						or String(result.get("hit_zone", "body")) == "head":
+					best_result = result
+					tracer_end = result.get("position", tracer_end)
+	_broadcast_shot_visual(visual_origin, tracer_end)
+	if not best_result.is_empty():
+		_broadcast_hit_confirmed(
+			best_result.get("position", tracer_end),
+			String(best_result.get("hit_zone", "body")),
+			total_damage,
+			any_kill
+		)
 
 
 ## 服务器：单颗弹丸射线复判；命中 Hitbox → 结算该颗伤害（多颗命中同一目标=累加，符合霰弹直觉）
-func _hitscan_pellet(origin: Vector3, dir: Vector3, player: Node3D) -> void:
+func _hitscan_pellet(origin: Vector3, dir: Vector3, player: Node3D) -> Dictionary:
 	var hit := Hitscan.server_raycast(origin, dir, range_m, player, HIT_MASK)
 	if hit.is_empty():
-		return
+		return {}
 	var collider: Node = hit.get("collider")
 	if collider is Hitbox:
-		(collider as Hitbox).apply_hit(damage, player)  # → damageable.take_damage（hp/state 经 HealthSync 广播）
-		_broadcast_hit_confirmed(hit.get("position", Vector3.ZERO))
+		var result := (collider as Hitbox).apply_hit(damage, player)
+		result["position"] = hit.get("position", Vector3.ZERO)
+		return result
 	# 命中普通世界物体（墙/地）无伤害；apply_damage 广播由状态同步隐式完成，避免重复结算
+	return {"position": hit.get("position", Vector3.ZERO), "world_hit": true}
 
 
 ## [authority] 服务器→所有人：命中确认（客户端**收到广播才播血雾/受击音效**，不本地猜，tech-plan §4.4）
 @rpc("authority", "call_local", "reliable")
-func hit_confirmed(pos: Vector3) -> void:
+func hit_confirmed(pos: Vector3, hit_zone: String, _applied_damage: float, killed: bool) -> void:
 	_play_sfx("zombie_hurt", pos)  # 命中音效（3D 定位在命中点）
 	_play_sfx("hit_confirm", pos)
+	feedback_received.emit(hit_zone, killed)
 	var parent := get_tree().current_scene as Node3D
 	if parent != null:
 		HitFeedback.spawn_blood_puff(parent, pos)
 
 
 ## 广播命中确认：单机（无 peer）直接本地执行；多人走 authority RPC（call_local 覆盖主机视角）
-func _broadcast_hit_confirmed(pos: Vector3) -> void:
+func _broadcast_hit_confirmed(pos: Vector3, hit_zone: String, applied_damage: float, killed: bool) -> void:
 	if NetworkManager.is_network_active():
-		hit_confirmed.rpc(pos)
+		hit_confirmed.rpc(pos, hit_zone, applied_damage, killed)
 	else:
-		hit_confirmed(pos)
+		hit_confirmed(pos, hit_zone, applied_damage, killed)
+
+
+@rpc("authority", "call_local", "unreliable")
+func shot_visual(from: Vector3, to: Vector3, _fired_weapon_id: String) -> void:
+	var pool := get_tree().get_first_node_in_group("tracer_pool")
+	if pool != null:
+		pool.call("show_tracer", from, to)
+
+
+func _broadcast_shot_visual(from: Vector3, to: Vector3) -> void:
+	if NetworkManager.is_network_active():
+		shot_visual.rpc(from, to, weapon_id)
+	else:
+		shot_visual(from, to, weapon_id)
+
+
+func crosshair_spread_deg(player: CharacterBody3D) -> float:
+	var movement := Vector2(player.velocity.x, player.velocity.z).length() * 0.12
+	var airborne := 1.5 if not player.is_on_floor() else 0.0
+	return spread_deg + visual_bloom_deg + movement + airborne
+
+
+func get_visual_muzzle_position() -> Vector3:
+	var player := _get_player()
+	if player == null:
+		return global_position
+	var marker_name := "%sMuzzle" % String(name)
+	var marker := player.get_node_or_null("Head/Camera/ViewMesh/%s" % marker_name) as Marker3D
+	if marker != null:
+		return marker.global_position
+	var camera := _get_camera()
+	return camera.to_global(muzzle_offset) if camera != null else global_position
 
 
 ## 音效钩子：事件 → SfxPool 播放（素材缺失静默跳过；S7 接线；pos 默认武器位置）

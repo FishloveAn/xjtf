@@ -8,19 +8,26 @@
 class_name Hitbox
 extends Area3D
 
-## 挂接的可受伤对象（默认父节点；跨节点挂接时手动指定）
-@export var damageable: Node
+const HITBOX_LAYER := 1 << 3
+
+## 挂接的可受伤对象。统一使用 NodePath，避免场景反序列化时节点引用为空。
+@export var damageable_path: NodePath = ^"../Health"
+@export_enum("body", "head") var hit_zone := "body"
+
+var _damageable: Damageable
 
 func _ready() -> void:
-	collision_layer = 3
+	collision_layer = HITBOX_LAYER
 	collision_mask = 0
-	if damageable == null:
-		damageable = get_parent()
+	_damageable = get_node_or_null(damageable_path) as Damageable
+	if _damageable == null:
+		push_warning("Hitbox 未挂接 Damageable: %s -> %s" % [get_path(), damageable_path])
 
 ## 服务器命中后调用：把伤害转发给 damageable（非服务器调用会被 damageable 拒绝）
-func apply_hit(dmg: float, attacker: Node = null) -> void:
-	var target := damageable as Damageable
-	if target == null:
-		push_warning("Hitbox 未挂接 Damageable: %s" % get_path())
-		return
-	target.take_damage(dmg, attacker)
+func apply_hit(dmg: float, attacker: Node = null) -> Dictionary:
+	if _damageable == null:
+		return {}
+	if _damageable.has_method("apply_weapon_hit"):
+		return _damageable.call("apply_weapon_hit", dmg, hit_zone, attacker)
+	_damageable.take_damage(dmg, attacker)
+	return {"hit_zone": hit_zone, "applied_damage": dmg, "killed": false}

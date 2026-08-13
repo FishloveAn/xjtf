@@ -19,6 +19,7 @@ func _run() -> void:
 	_test_invalid_schema_is_not_resumeable()
 	_test_version_one_completed_save_migrates_to_complete()
 	_test_version_two_save_migrates_without_losing_equipment()
+	_test_version_three_save_migrates_primary_weapon()
 	await _test_capture_equipment_from_player()
 	await _test_apply_magazines_to_recreated_player()
 	_test_checkpoint_is_consumed_once_by_host()
@@ -61,7 +62,7 @@ func _test_round_trip_keeps_resume_state() -> void:
 		1, 42.75, 9, equipment, 3, TEST_PATH, player_state, level_flags
 	)
 	var loaded: Dictionary = Checkpoints.load_progress(TEST_PATH)
-	_expect(saved.get("version") == 3, "新存档使用 version=3")
+	_expect(saved.get("version") == 4, "新存档使用 version=4")
 	_expect(loaded.get("level_phase") == 3, "重新读取后保留关卡阶段")
 	var loaded_equipment: Dictionary = loaded.get("equipment", {})
 	var magazines: Dictionary = loaded_equipment.get("magazines", {})
@@ -112,7 +113,7 @@ func _test_version_one_completed_save_migrates_to_complete() -> void:
 	}))
 	file.close()
 	var migrated: Dictionary = Checkpoints.load_progress(TEST_PATH)
-	_expect(int(migrated.get("version", 0)) == 3, "旧存档迁移到 version=3")
+	_expect(int(migrated.get("version", 0)) == 4, "旧存档迁移到 version=4")
 	_expect(int(migrated.get("level_phase", -1)) == 5, "旧已完成存档迁移为 COMPLETE 阶段")
 	_expect(migrated.get("equipment", {}).is_empty(), "旧存档缺少装备时使用默认装备")
 
@@ -127,10 +128,31 @@ func _test_version_two_save_migrates_without_losing_equipment() -> void:
 	}))
 	file.close()
 	var migrated := Checkpoints.load_progress(TEST_PATH)
-	_expect(int(migrated.get("version", 0)) == 3, "version=2 存档迁移到 version=3")
+	_expect(int(migrated.get("version", 0)) == 4, "version=2 存档迁移到 version=4")
 	_expect(migrated.get("equipment", {}).get("active_weapon") == "rifle",
 		"version=2 迁移保留装备")
 	_expect(migrated.get("player_state", {}).is_empty(), "version=2 缺少玩家状态时使用安全默认")
+
+
+func _test_version_three_save_migrates_primary_weapon() -> void:
+	_cleanup_test_saves()
+	var file := FileAccess.open(TEST_PATH, FileAccess.WRITE)
+	file.store_string(JSON.stringify({
+		"version": 3, "segment": 1, "completed": false, "level_phase": 3,
+		"finish_time_s": 20.0, "best_score": 5, "saved_at": "v3",
+		"equipment": {"active_weapon": "smg", "magazines": {"pistol": 8, "smg": 19}},
+		"player_state": {"position": [0.0, 0.0, 0.0], "rotation_y": 0.0, "hp": 80.0, "state": 0},
+		"level_flags": {
+			"horde_triggered": true, "horde_cleared": false, "holdout_triggered": false,
+			"holdout_cleared": false, "harass_done": true,
+		},
+	}))
+	file.close()
+	var migrated := Checkpoints.load_progress(TEST_PATH)
+	_expect(int(migrated.get("version", 0)) == 4, "version=3 存档迁移到 version=4")
+	var equipment: Dictionary = migrated.get("equipment", {})
+	_expect(equipment.get("active_weapon") == "smg", "version=3 迁移保留正在使用的主武器")
+	_expect(equipment.get("primary_weapon", "") == "", "旧档缺少主武器槽时由玩家恢复入口推导")
 
 
 func _test_capture_equipment_from_player() -> void:
@@ -145,6 +167,7 @@ func _test_capture_equipment_from_player() -> void:
 	var equipment: Dictionary = Checkpoints.capture_equipment(player)
 	_expect(equipment.get("active_weapon") == "rifle", "采集真实玩家当前武器")
 	_expect(int(equipment.get("magazines", {}).get("rifle", -1)) == 7, "采集真实玩家步枪弹匣")
+	_expect(equipment.has("primary_weapon") and equipment.has("grenade_count"), "v4 快照包含主武器与投掷物字段")
 	player.queue_free()
 	await process_frame
 

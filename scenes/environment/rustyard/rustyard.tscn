@@ -530,51 +530,67 @@ rotation_degrees = Vector3(0, -90, 0)
 
 [node name="HordeYardA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -12)
+metadata/spawn_zone = "yard"
 
 [node name="HordeYardB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 12)
+metadata/spawn_zone = "yard"
 
 [node name="HordeYardC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -13)
+metadata/spawn_zone = "yard"
 
 [node name="HordeYardD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 13)
+metadata/spawn_zone = "yard"
 
 [node name="HordeCorrA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -2.5)
+metadata/spawn_zone = "corridor"
 
 [node name="HordeCorrB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 2.5)
+metadata/spawn_zone = "corridor"
 
 [node name="HordeCorrC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 0, -2.5)
+metadata/spawn_zone = "corridor"
 
 [node name="HordeCorrD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 0, 2.5)
+metadata/spawn_zone = "corridor"
 
 [node name="HordePlazaA" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -14)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaB" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, -15)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaC" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, -13)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaD" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 14)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaE" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 15)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaF" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 13)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaG" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 0)
+metadata/spawn_zone = "plaza"
 
 [node name="HordePlazaH" type="Marker3D" parent="Markers/HordeSpawns" groups=["horde_spawn_point"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 0)
+metadata/spawn_zone = "plaza"
 
 [node name="SupplySpots" type="Node3D" parent="Markers"]
 

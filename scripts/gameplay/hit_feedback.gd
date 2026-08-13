@@ -18,8 +18,8 @@ static func spawn_blood_puff(parent: Node3D, world_pos: Vector3) -> void:
 	var puff := BLOOD_PUFF_SCENE.instantiate() as GPUParticles3D
 	if puff == null:
 		return
-	puff.global_position = world_pos
 	parent.add_child(puff)
+	puff.global_position = world_pos
 	puff.restart()
 	if puff.one_shot:
 		puff.finished.connect(_free_puff.bind(puff))

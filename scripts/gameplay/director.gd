@@ -38,6 +38,17 @@ var _specials_cooldown_s := 30.0
 var _last_special_spawn_s := -INF  # 服务器时间戳（秒），初始 -INF 使首次冷却已过
 var _degrade_enabled := false
 var _degrade_max_concurrent := 0
+var _degrade_min_concurrent := 40
+var _degrade_step := 5
+var _adaptive_cap := 60
+var _degrade_above_ms := 20.0
+var _recover_below_ms := 17.5
+var _sample_window_s := 2.0
+var _recover_hold_s := 5.0
+var _frame_samples: PackedFloat32Array = PackedFloat32Array()
+var _sample_elapsed := 0.0
+var _recover_elapsed := 0.0
+var _last_p95_ms := 0.0
 
 var _wm: WaveManager = null
 var _wave_elapsed := 0.0
@@ -57,6 +68,7 @@ func _process(delta: float) -> void:
 	# 压力只驱动服务器刷怪节奏；客户端（非服务器）不计算
 	if _wm == null or not NetworkManager.is_server():
 		return
+	_sample_frame_time(delta)
 	if _wm.state == WaveManager.State.WAVE_ACTIVE:
 		_wave_elapsed += delta
 	else:
@@ -147,6 +159,13 @@ func _load_params() -> bool:
 		else:
 			_degrade_max_concurrent = 1
 			push_warning("[Director] degrade.max_concurrent 必须为正整数，已按 1 处理")
+		_degrade_min_concurrent = clampi(int(degrade.get("min_concurrent", 40)), 1, _degrade_max_concurrent)
+		_degrade_step = maxi(int(degrade.get("step", 5)), 1)
+		_adaptive_cap = _degrade_max_concurrent
+		_degrade_above_ms = float(degrade.get("degrade_above_ms", 20.0))
+		_recover_below_ms = float(degrade.get("recover_below_ms", 17.5))
+		_sample_window_s = maxf(float(degrade.get("sample_window_s", 2.0)), 0.5)
+		_recover_hold_s = maxf(float(degrade.get("recover_hold_s", 5.0)), 1.0)
 	return true
 
 
@@ -154,7 +173,34 @@ func _load_params() -> bool:
 func concurrent_cap(wave_cap: int) -> int:
 	if not _degrade_enabled:
 		return wave_cap
-	return mini(wave_cap, maxi(_degrade_max_concurrent, 1))
+	var configured_max := maxi(_degrade_max_concurrent, 1)
+	return mini(wave_cap, clampi(_adaptive_cap, 1, configured_max))
+
+
+func _sample_frame_time(delta: float) -> void:
+	if not _degrade_enabled:
+		return
+	_frame_samples.append(delta * 1000.0)
+	_sample_elapsed += delta
+	if _sample_elapsed < _sample_window_s:
+		return
+	_sample_elapsed = 0.0
+	var sorted := Array(_frame_samples)
+	sorted.sort()
+	_frame_samples.clear()
+	if sorted.is_empty():
+		return
+	_last_p95_ms = float(sorted[mini(int(sorted.size() * 0.95), sorted.size() - 1)])
+	if _last_p95_ms > _degrade_above_ms:
+		_adaptive_cap = maxi(_adaptive_cap - _degrade_step, _degrade_min_concurrent)
+		_recover_elapsed = 0.0
+	elif _last_p95_ms < _recover_below_ms:
+		_recover_elapsed += _sample_window_s
+		if _recover_elapsed >= _recover_hold_s:
+			_adaptive_cap = mini(_adaptive_cap + _degrade_step, _degrade_max_concurrent)
+			_recover_elapsed = 0.0
+	else:
+		_recover_elapsed = 0.0
 
 
 ## 特感同屏上限：director.json max_simultaneous 生效，硬上限 5（tech-plan §10）
@@ -184,6 +230,6 @@ func mark_special_spawned() -> void:
 func _debug_print() -> void:
 	if _wm.state != WaveManager.State.WAVE_ACTIVE:
 		return  # 压力只服务刷怪阶段，Setup/Intermission 不刷屏
-	print("[Director] pressure=%.2f spawn_interval=%.2fs wave_elapsed=%.1fs (specials=%s degrade=%s)" % [
-		pressure, _last_interval, _wave_elapsed, _specials_enabled, _degrade_enabled
+	print("[Director] pressure=%.2f spawn_interval=%.2fs wave_elapsed=%.1fs p95=%.1fms cap=%d (specials=%s degrade=%s)" % [
+		pressure, _last_interval, _wave_elapsed, _last_p95_ms, _adaptive_cap, _specials_enabled, _degrade_enabled
 	])

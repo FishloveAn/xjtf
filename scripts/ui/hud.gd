@@ -20,10 +20,14 @@ extends CanvasLayer
 @onready var _pickup_hint: Label = $Root/PickupHint
 @onready var _special_warn: Label = $Root/SpecialWarn
 @onready var _objective: Label = $Root/LevelObjective
+@onready var _crosshair: Control = $Root/Crosshair
+@onready var _hit_marker: Label = $Root/HitMarker
 
 ## 波次 Setup 倒计时展示（纯展示本地动画；波次是否开始由服务器 wave_begun 广播决定）
 var _display_countdown := 0.0
 var _last_display_secs := -1
+var _feedback_weapon: WeaponBase
+var _hit_marker_timer := 0.0
 
 
 func _ready() -> void:
@@ -73,6 +77,8 @@ func _process(delta: float) -> void:
 			_ammo_label.text = "%s  %d / %d" % [weapon.display_name, weapon.mag_current, weapon.mag_size]
 	else:
 		_ammo_label.visible = false
+	_ammo_label.tooltip_text = "G 手雷 %d　H 燃烧瓶 %d" % [int(player.get("grenade_count")), int(player.get("molotov_count"))]
+	_tick_crosshair(player as CharacterBody3D, weapon, delta)
 	# 状态提示：倒地 → 黄字提示；死亡 → 全屏黑幕
 	_downed_label.visible = state.state == PlayerState.State.DOWN
 	_dead_overlay.visible = state.state == PlayerState.State.DEAD
@@ -82,10 +88,17 @@ func _process(delta: float) -> void:
 		_revive_bar.value = state.revive_progress * _revive_bar.max_value
 	# S4 拾取提示：附近有补给点显示"按 E 拾取"（只读检测，不持有补给点状态）；
 	# S6 无补给点时检测掉落物（pickup_items 组，蓝=弹药 红=医疗包）
-	var supply := _find_nearby_supply(player)
-	var pickup := null if supply != null else _find_nearby_pickup(player)
-	_pickup_hint.visible = supply != null or pickup != null
-	if supply != null:
+	var stand := _find_nearby_weapon_stand(player)
+	var throwable_supply := null if stand != null else _find_nearby_throwable_supply(player)
+	var supply := null if stand != null or throwable_supply != null else _find_nearby_supply(player)
+	var pickup := null if stand != null or throwable_supply != null or supply != null else _find_nearby_pickup(player)
+	_pickup_hint.visible = stand != null or throwable_supply != null or supply != null or pickup != null
+	if stand != null:
+		var verb := "替换" if not String(player.get("primary_weapon_id")).is_empty() else "拾取"
+		_pickup_hint.text = "按 E %s %s" % [verb, stand.display_name()]
+	elif throwable_supply != null:
+		_pickup_hint.text = "按 E 补充 %s" % throwable_supply.display_name()
+	elif supply != null:
 		var type_name := "弹药" if supply.supply_type == SupplyPoint.Type.AMMO else "医疗"
 		_pickup_hint.text = "按 E 拾取 %s" % type_name
 	elif pickup != null:
@@ -104,6 +117,34 @@ func _hide_all() -> void:
 	_pickup_hint.visible = false
 	_special_warn.visible = false
 	_objective.visible = false
+	_crosshair.visible = false
+	_hit_marker.visible = false
+
+
+func _tick_crosshair(player: CharacterBody3D, weapon: WeaponBase, delta: float) -> void:
+	_crosshair.visible = weapon != null
+	if weapon == null:
+		return
+	if _feedback_weapon != weapon:
+		if _feedback_weapon != null and _feedback_weapon.feedback_received.is_connected(_on_hit_feedback):
+			_feedback_weapon.feedback_received.disconnect(_on_hit_feedback)
+		_feedback_weapon = weapon
+		if not weapon.feedback_received.is_connected(_on_hit_feedback):
+			weapon.feedback_received.connect(_on_hit_feedback)
+	var gap := clampf(7.0 + weapon.crosshair_spread_deg(player) * 2.4, 8.0, 30.0)
+	$Root/Crosshair/Left.position = Vector2(-gap - 8.0, -1.0)
+	$Root/Crosshair/Right.position = Vector2(gap, -1.0)
+	$Root/Crosshair/Top.position = Vector2(-1.0, -gap - 8.0)
+	$Root/Crosshair/Bottom.position = Vector2(-1.0, gap)
+	_hit_marker_timer = maxf(_hit_marker_timer - delta, 0.0)
+	_hit_marker.visible = _hit_marker_timer > 0.0
+
+
+func _on_hit_feedback(hit_zone: String, killed: bool) -> void:
+	_hit_marker_timer = 0.32
+	_hit_marker.text = "◆" if killed else "×"
+	_hit_marker.modulate = Color(1.0, 0.35, 0.2) if killed else (Color(1.0, 0.85, 0.2) if hit_zone == "head" else Color.WHITE)
+	_hit_marker.visible = true
 
 
 ## 找本机玩家（players 组中 is_multiplayer_authority() 为真的那个；单机即唯一玩家）
@@ -135,6 +176,35 @@ func _find_nearby_supply(player: Node3D) -> SupplyPoint:
 		if dist <= best_dist:
 			best_dist = dist
 			best = s as SupplyPoint
+	return best
+
+
+func _find_nearby_weapon_stand(player: Node3D) -> WeaponStand:
+	var best: WeaponStand = null
+	var best_dist := WeaponStand.PICKUP_RANGE
+	for stand in get_tree().get_nodes_in_group("weapon_stands"):
+		var typed := stand as WeaponStand
+		if typed == null or bool(player.call("has_claimed_weapon_stand", typed.weapon_id)):
+			continue
+		var dist := player.global_position.distance_to(typed.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = typed
+	return best
+
+
+func _find_nearby_throwable_supply(player: Node3D) -> ThrowableSupply:
+	var best: ThrowableSupply = null
+	var best_dist := ThrowableSupply.PICKUP_RANGE
+	for supply in get_tree().get_nodes_in_group("throwable_supplies"):
+		var typed := supply as ThrowableSupply
+		var count := int(player.get("grenade_count")) if typed.throwable_type == "grenade" else int(player.get("molotov_count"))
+		if count >= 1:
+			continue
+		var dist := player.global_position.distance_to(typed.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = typed
 	return best
 
 

@@ -24,6 +24,12 @@
   },
   "degrade": {
     "enabled": true,
-    "max_concurrent": 100
+    "max_concurrent": 60,
+    "min_concurrent": 40,
+    "step": 5,
+    "degrade_above_ms": 20.0,
+    "recover_below_ms": 17.5,
+    "sample_window_s": 2.0,
+    "recover_hold_s": 5.0
   }
 }

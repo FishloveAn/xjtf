@@ -43,6 +43,9 @@ func _run_server() -> void:
 		"cleared_when": {"type": "all_spawned_killed"},
 		"reward": {"health_packs": 0, "ammo": 0},
 	}
+	var director := wave_manager.get("_director") as Node
+	if director != null:
+		director.set("_degrade_enabled", false)
 	wave_manager.set("level_mode", false)
 	wave_manager.call("_begin_wave", 2)
 	wave_manager.set("_setup_timer", 0.05)

@@ -6,7 +6,7 @@
       "id": "common",
       "name_zh": "普通丧尸",
       "hp": 100,
-      "move_speed": 3.0,
+      "move_speed": 2.5,
       "turn_interval_s": 1.5,
       "attack": {
         "range_m": 1.6,
@@ -22,7 +22,7 @@
       "id": "charger",
       "name_zh": "冲撞者",
       "hp": 600,
-      "move_speed": 2.4,
+      "move_speed": 2.1,
       "turn_interval_s": 1.0,
       "attack": {
         "range_m": 2.0,
@@ -48,7 +48,7 @@
       "id": "spitter",
       "name_zh": "喷吐者",
       "hp": 150,
-      "move_speed": 2.0,
+      "move_speed": 1.8,
       "turn_interval_s": 1.0,
       "attack": {
         "range_m": 1.2,
@@ -71,6 +71,56 @@
           "dps": 10.0
         },
         "cooldown_s": 4.0
+      },
+      "die_clear_s": 2.5
+    },
+    {
+      "id": "hunter",
+      "name_zh": "跳跃者",
+      "hp": 300,
+      "move_speed": 3.5,
+      "turn_interval_s": 0.6,
+      "attack": {
+        "range_m": 1.8,
+        "damage": 15,
+        "windup_s": 0.3,
+        "cooldown_s": 1.2
+      },
+      "chase_range_m": 50.0,
+      "sight_range_m": 35.0,
+      "special": {
+        "type": "pounce",
+        "pounce_windup_s": 0.4,
+        "pounce_speed_mps": 14.0,
+        "pounce_range_m": 14.0,
+        "pounce_min_range_m": 3.0,
+        "pounce_jump_height": 3.0,
+        "pin_duration_s": 3.0,
+        "recover_s": 1.2,
+        "cooldown_s": 6.0
+      },
+      "die_clear_s": 2.5
+    },
+    {
+      "id": "boomer",
+      "name_zh": "自爆者",
+      "hp": 200,
+      "move_speed": 1.8,
+      "turn_interval_s": 1.0,
+      "attack": {
+        "range_m": 1.5,
+        "damage": 8,
+        "windup_s": 0.3,
+        "cooldown_s": 1.5
+      },
+      "chase_range_m": 45.0,
+      "sight_range_m": 25.0,
+      "special": {
+        "type": "explode",
+        "trigger_range_m": 2.5,
+        "explode_radius_m": 4.5,
+        "explode_damage": 50.0,
+        "windup_s": 0.6
       },
       "die_clear_s": 2.5
     }

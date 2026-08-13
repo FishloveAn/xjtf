@@ -37,6 +37,7 @@
     {
       "id": "level_harass",
       "name": "小骚扰",
+      "spawn_zone": "yard",
       "composition": { "common": 8 },
       "concurrent_cap": 8,
       "spawn_style": "trickle",
@@ -47,6 +48,7 @@
     {
       "id": "level_horde_01",
       "name": "第一波·通道尸潮",
+      "spawn_zone": "corridor",
       "composition": { "common": 24 },
       "concurrent_cap": 24,
       "spawn_style": "trickle",
@@ -57,7 +59,8 @@
     {
       "id": "level_holdout",
       "name": "守点高潮",
-      "composition": { "common": 60, "charger": 1, "spitter": 1 },
+      "spawn_zone": "plaza",
+      "composition": { "common": 60, "charger": 1, "spitter": 1, "hunter": 1, "boomer": 1 },
       "concurrent_cap": 60,
       "spawn_style": "burst",
       "spawn_interval": 0.5,

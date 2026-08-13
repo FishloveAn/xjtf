@@ -1,0 +1,62 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/zombie_ai_hunter.gd" id="1_ai"]
+[ext_resource type="Script" path="res://scripts/enemies/zombie_health.gd" id="2_health"]
+[ext_resource type="Script" path="res://scripts/core/hitbox.gd" id="3_hitbox"]
+[ext_resource type="PackedScene" path="res://scenes/fx/blood_puff.tscn" id="4_blood_puff"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/char_goblin_hunter.glb" id="5_zombie"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body_hitbox"]
+radius = 0.42
+height = 1.3
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_head_hitbox"]
+radius = 0.3
+
+[node name="Hunter" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 5
+
+[node name="Visual" parent="." instance=ExtResource("5_zombie")]
+position = Vector3(0, 0, 0)
+scale = Vector3(1, 1, 1)
+
+[node name="BloodPuff" parent="." instance=ExtResource("4_blood_puff")]
+position = Vector3(0, 1.2, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_collision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.4
+target_desired_distance = 1.0
+radius = 0.4
+height = 1.8
+
+[node name="AI" type="Node" parent="."]
+script = ExtResource("1_ai")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_health")
+
+[node name="SpecialSync" type="MultiplayerSynchronizer" parent="."]
+
+[node name="Hitbox" type="Area3D" parent="."]
+script = ExtResource("3_hitbox")
+
+[node name="HitboxShape" type="CollisionShape3D" parent="Hitbox"]
+position = Vector3(0, 0.68, 0)
+shape = SubResource("CapsuleShape3D_body_hitbox")
+
+[node name="HeadHitbox" type="Area3D" parent="."]
+script = ExtResource("3_hitbox")
+hit_zone = "head"
+
+[node name="HeadShape" type="CollisionShape3D" parent="HeadHitbox"]
+position = Vector3(0, 1.5, 0)
+shape = SubResource("SphereShape3D_head_hitbox")

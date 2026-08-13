@@ -43,6 +43,18 @@ rotation = Vector3(0, 3.14159, 0)
 position = Vector3(0.22, -0.22, -0.42)
 rotation = Vector3(0, 3.14159, 0)
 
+[node name="PistolMuzzle" type="Marker3D" parent="Head/Camera/ViewMesh"]
+position = Vector3(0.22, -0.14, -0.72)
+
+[node name="ShotgunMuzzle" type="Marker3D" parent="Head/Camera/ViewMesh"]
+position = Vector3(0.2, -0.17, -1.05)
+
+[node name="RifleMuzzle" type="Marker3D" parent="Head/Camera/ViewMesh"]
+position = Vector3(0.22, -0.19, -1.0)
+
+[node name="SMGMuzzle" type="Marker3D" parent="Head/Camera/ViewMesh"]
+position = Vector3(0.22, -0.17, -0.86)
+
 [node name="Body" parent="." instance=ExtResource("7_player_glb")]
 rotation = Vector3(0, 3.14159, 0)
 scale = Vector3(1, 1, 1)

@@ -17,6 +17,7 @@ const COLLISION_LAYER := 4          # 敌人层（M1-S5 碰撞层方案）
 const COLLISION_MASK := 5           # 世界1 + 敌人4
 const DEATH_FADE_TIME := 0.6        # 秒，死亡 Visual 缩放淡出
 const ZOMBIES_JSON_PATH := "res://data/zombies.json"
+const OUTLINE_SHADER := preload("res://assets/shaders/outline.gdshader")
 
 var _body: CharacterBody3D
 var _visual: Node3D = null
@@ -50,6 +51,35 @@ func _ready() -> void:
 		health.died.connect(_on_died)
 	add_to_group("zombie_specials")  # HUD 前摇警示等按组查找
 	_bind_anim_player()  # M3-ART-P1：特感带骨骼 glb（含 AnimationPlayer），按状态切换播放
+	_apply_outline()  # 特感描边轮廓（提升剪影辨识，替换清单附录 C）
+
+
+## 特感描边轮廓：遍历视觉网格，给每个 mesh 材质挂 outline shader 作 next_pass（黑色描边）。
+## 特感数量 ≤5 不池化，无合批顾虑；共享材质 next_pass 已设置则跳过（幂等）。
+func _apply_outline() -> void:
+	if _visual == null:
+		return
+	var outline := ShaderMaterial.new()
+	outline.shader = OUTLINE_SHADER
+	outline.set_shader_parameter("outline_color", Color(0.02, 0.02, 0.03, 1.0))
+	outline.set_shader_parameter("outline_width", 0.03)
+	_apply_outline_recursive(_visual, outline)
+
+
+func _apply_outline_recursive(node: Node, outline: Material) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		var mesh := mi.mesh
+		if mesh != null:
+			for i in mesh.get_surface_count():
+				var mat := mi.get_surface_override_material(i)
+				if mat == null:
+					mat = mesh.surface_get_material(i)
+				if mat == null or mat.next_pass != null:
+					continue
+				mat.next_pass = outline
+	for child in node.get_children():
+		_apply_outline_recursive(child, outline)
 
 
 ## M3-ART-P1：查找 glb 实例下的 AnimationPlayer 并初始化（spawn 一次）
@@ -223,11 +253,21 @@ func _play_death_fx() -> void:
 	var blood := _body.get_node_or_null("BloodPuff") as GPUParticles3D
 	if blood != null:
 		blood.restart()
+	_spawn_blood_decal()
 	if _visual != null:
 		_kill_visual_tweens()
 		_visual_tween = create_tween()
+		_visual_tween.set_parallel(true)
 		_visual_tween.tween_property(_visual, "scale", Vector3.ZERO, DEATH_FADE_TIME)
+		_visual_tween.tween_property(_visual, "position:y", _visual.position.y - 0.3, DEATH_FADE_TIME)
 	_start_death_cleanup()
+
+
+## 地面血渍贴花（所有端本地视觉）：死亡点投射血迹（美术方向 §3.6；池存在才生效）
+func _spawn_blood_decal() -> void:
+	var pool := get_tree().get_first_node_in_group("blood_decal_pool")
+	if pool != null:
+		pool.call("spawn_decal", _body.global_position)
 
 
 func _start_death_cleanup() -> void:

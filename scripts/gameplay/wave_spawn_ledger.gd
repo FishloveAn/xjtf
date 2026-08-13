@@ -1,7 +1,7 @@
 class_name WaveSpawnLedger
 extends RefCounted
 
-const SPECIAL_TYPES := [&"charger", &"spitter"]
+const SPECIAL_TYPES := [&"charger", &"spitter", &"hunter", &"boomer"]
 
 var _composition: Dictionary = {}
 var _spawned_by_type: Dictionary = {}
@@ -43,6 +43,10 @@ func next_spawn_type(special_allowed: bool, special_cap: int) -> StringName:
 			return &"charger"
 		if _has_remaining(&"spitter"):
 			return &"spitter"
+		if _has_remaining(&"hunter"):
+			return &"hunter"
+		if _has_remaining(&"boomer"):
+			return &"boomer"
 	if _has_remaining(&"common"):
 		return &"common"
 	return &""

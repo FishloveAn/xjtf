@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/zombie_ai_common.gd" id="1_ai"]
 [ext_resource type="Script" path="res://scripts/enemies/zombie_health.gd" id="2_health"]
@@ -18,6 +18,13 @@ material = SubResource("StandardMaterial3D_zombie")
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_collision"]
 radius = 0.35
 height = 1.7
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body_hitbox"]
+radius = 0.36
+height = 1.25
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_head_hitbox"]
+radius = 0.28
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_attack"]
 radius = 1.8
@@ -57,9 +64,16 @@ shape = SubResource("SphereShape3D_attack")
 [node name="ZombieSync" type="MultiplayerSynchronizer" parent="."]
 
 [node name="Hitbox" type="Area3D" parent="."]
-damageable = NodePath("../Health")
 script = ExtResource("3_hitbox")
 
 [node name="HitboxShape" type="CollisionShape3D" parent="Hitbox"]
-position = Vector3(0, 0.9, 0)
-shape = SubResource("CapsuleShape3D_collision")
+position = Vector3(0, 0.68, 0)
+shape = SubResource("CapsuleShape3D_body_hitbox")
+
+[node name="HeadHitbox" type="Area3D" parent="."]
+script = ExtResource("3_hitbox")
+hit_zone = "head"
+
+[node name="HeadShape" type="CollisionShape3D" parent="HeadHitbox"]
+position = Vector3(0, 1.48, 0)
+shape = SubResource("SphereShape3D_head_hitbox")

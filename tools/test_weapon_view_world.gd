@@ -68,6 +68,7 @@ func _verify_player(player: Node3D, is_local: bool) -> void:
 
 
 func _verify_switching(player: Node3D) -> void:
+	player.set("primary_weapon_id", "rifle")
 	player._set_active_weapon(2)
 	var weapons: Array = player.get("_weapons")
 	_expect(weapons.size() == 4, "切枪逻辑未保留四个 WeaponBase")

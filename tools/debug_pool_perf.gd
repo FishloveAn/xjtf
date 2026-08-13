@@ -58,6 +58,10 @@ func _run() -> void:
 	if wm == null or zombies == null or pool == null:
 		_finish()
 		return
+	# 本工具验证对象池原始 100 怪能力；正式玩法的动态 40–60 上限在独立 Director 测试覆盖。
+	var director := wm.get("_director") as Node
+	if director != null:
+		director.set("_degrade_enabled", false)
 	_check(pool.get("_pool").size() == POOL_CAPACITY,
 		"对象池容量 %d（M3-S4 确认：100 峰值 + 特感不池化 = 够用）" % pool.get("_pool").size())
 
