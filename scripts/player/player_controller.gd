@@ -18,7 +18,10 @@ const SLIDE_DURATION := 0.7
 const SLIDE_COOLDOWN := 0.35
 const GROUND_ACCEL := 28.0
 const GROUND_DECEL := 34.0
-const AIR_ACCEL := 8.0
+const AIR_STRAFE_SPEED := 7.5    # 米/秒，空中希望速度（=冲刺；转向时可累积超过它）
+const AIR_STRAFE_ACCEL := 60.0   # 米/秒²，空中转向加速度（圆弧跳加速力度）
+const AIR_STRAFE_MAX_SPEED := 12.0  # 米/秒，圆弧跳水平速度软上限
+const MOMENTUM_TURN_ACCEL := 8.0     # 米/秒²，落地超速时温和衰减（保留圆弧跳动量）
 const COYOTE_TIME := 0.12
 const JUMP_BUFFER_TIME := 0.12
 const JUMP_VELOCITY := 4.5    # 米/秒，起跳初速度
@@ -763,12 +766,11 @@ func _physics_process(delta: float) -> void:
 		velocity.z = _slide_direction.z * slide_speed
 	else:
 		var sprinting := Input.is_action_pressed("sprint") and direction != Vector3.ZERO and is_on_floor()
-		var target_speed := SPRINT_SPEED if sprinting else WALK_SPEED
-		var target := direction * target_speed
-		var acceleration := AIR_ACCEL if not is_on_floor() else (GROUND_ACCEL if direction != Vector3.ZERO else GROUND_DECEL)
-		velocity.x = move_toward(velocity.x, target.x, acceleration * delta)
-		velocity.z = move_toward(velocity.z, target.z, acceleration * delta)
 		_camera.fov = move_toward(_camera.fov, 80.0 if sprinting else 75.0, delta * 18.0)
+		if is_on_floor():
+			_apply_ground_move(direction, delta, sprinting)
+		else:
+			_apply_air_strafe(direction, delta)
 	_head.position.y = move_toward(_head.position.y, 1.05 if _slide_timer > 0.0 else 1.6, delta * 4.5)
 	if not is_on_floor():
 		# 注意：get_gravity().y 为负（默认 -9.8），必须 **加** 它才会向下加速；
@@ -787,6 +789,44 @@ func _physics_process(delta: float) -> void:
 	_poll_auto_fire()
 	# 脚步/落地音频（仅本地玩家；素材缺失静默，就位即生效）
 	_tick_movement_sfx(delta)
+
+
+## 地面水平速度：朝输入方向加速到目标速度；若已超速（圆弧跳落地动量）则仅温和衰减，
+## 不硬拉回冲刺速度，让玩家落地后短暂保留圆弧跳累积的高速。
+func _apply_ground_move(direction: Vector3, delta: float, sprinting: bool) -> void:
+	var target_speed := SPRINT_SPEED if sprinting else WALK_SPEED
+	if direction == Vector3.ZERO:
+		velocity.x = move_toward(velocity.x, 0.0, GROUND_DECEL * delta)
+		velocity.z = move_toward(velocity.z, 0.0, GROUND_DECEL * delta)
+		return
+	var target := direction * target_speed
+	var forward_speed := Vector2(velocity.x, velocity.z).dot(Vector2(direction.x, direction.z))
+	if forward_speed < target_speed:
+		velocity.x = move_toward(velocity.x, target.x, GROUND_ACCEL * delta)
+		velocity.z = move_toward(velocity.z, target.z, GROUND_ACCEL * delta)
+	else:
+		velocity.x = move_toward(velocity.x, target.x, MOMENTUM_TURN_ACCEL * delta)
+		velocity.z = move_toward(velocity.z, target.z, MOMENTUM_TURN_ACCEL * delta)
+
+
+## 空中 air strafe（COD 圆弧跳核心）：Quake 式——只沿"输入方向"施加加速度，
+## 速度在该方向的分量未达希望速度前持续加速。空中转向让输入方向偏离速度方向，
+## 从而把水平速度模长累积到超过地面冲刺速度；直线跳（输入不转）则不加速。
+func _apply_air_strafe(direction: Vector3, delta: float) -> void:
+	if direction == Vector3.ZERO:
+		return
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var current_speed := horizontal.dot(direction)
+	var add_speed := AIR_STRAFE_SPEED - current_speed
+	if add_speed > 0.0:
+		var step := minf(AIR_STRAFE_ACCEL * delta, add_speed)
+		velocity.x += direction.x * step
+		velocity.z += direction.z * step
+	var speed := Vector2(velocity.x, velocity.z).length()
+	if speed > AIR_STRAFE_MAX_SPEED:
+		var scale := AIR_STRAFE_MAX_SPEED / speed
+		velocity.x *= scale
+		velocity.z *= scale
 
 
 func _try_start_slide() -> void:
