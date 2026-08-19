@@ -1,4 +1,4 @@
-[gd_scene load_steps=66 format=3]
+[gd_scene load_steps=85 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/area_trigger.gd" id="1_area"]
 [ext_resource type="Script" path="res://scripts/gameplay/door.gd" id="2_door"]
@@ -18,6 +18,10 @@
 [ext_resource type="PackedScene" path="res://assets/models/environment/env_barrier_01.glb" id="16_env_barrier"]
 [ext_resource type="PackedScene" path="res://assets/models/environment/env_chest_01.glb" id="17_env_chest"]
 [ext_resource type="NavigationMesh" path="res://scenes/environment/rustyard/rustyard_navigation_mesh.tres" id="18_navigation"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_building_small_1.glb" id="19_building_small"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_building_medium_2_001.glb" id="20_building_medium"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_building_large_2.glb" id="21_building_large"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/env_block_stairs_entrance_concrete.glb" id="22_stairs_concrete"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_ground"]
 albedo_color = Color(1, 1, 1, 1)
@@ -161,6 +165,54 @@ size = Vector3(3, 4, 6)
 
 [sub_resource type="BoxShape3D" id="BS_trigger_25_4_5"]
 size = Vector3(2.5, 4, 5)
+
+[sub_resource type="BoxMesh" id="BM_wall_6_3_05"]
+size = Vector3(6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BS_wall_6_3_05"]
+size = Vector3(6, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_6"]
+size = Vector3(0.5, 3, 6)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_6"]
+size = Vector3(0.5, 3, 6)
+
+[sub_resource type="BoxMesh" id="BM_wall_05_3_2"]
+size = Vector3(0.5, 3, 2)
+
+[sub_resource type="BoxShape3D" id="BS_wall_05_3_2"]
+size = Vector3(0.5, 3, 2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_lamp"]
+shading_mode = 0
+albedo_color = Color(1, 0.55, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.32, 0.08, 1)
+emission_energy_multiplier = 2.5
+
+[sub_resource type="BoxMesh" id="BM_warehouse_roof"]
+size = Vector3(6, 0.2, 6)
+
+[sub_resource type="BoxShape3D" id="BS_warehouse_roof"]
+size = Vector3(6, 0.2, 6)
+
+[sub_resource type="BoxMesh" id="BM_loading_platform"]
+size = Vector3(2, 0.2, 2)
+
+[sub_resource type="BoxShape3D" id="BS_loading_platform"]
+size = Vector3(2, 0.2, 2)
+
+[sub_resource type="BoxShape3D" id="BS_stair_ramp"]
+size = Vector3(2, 0.15, 1.118)
+
+[sub_resource type="BoxShape3D" id="BS_tactical_cover"]
+size = Vector3(1.1, 0.6, 0.4)
+
+[sub_resource type="SphereMesh" id="SM_lamp"]
+material = SubResource("Mat_lamp")
+radius = 0.12
+height = 0.24
 
 [node name="Rustyard" type="Node3D"]
 
@@ -443,6 +495,156 @@ surface_material_override/0 = SubResource("Mat_door")
 [node name="Collision" type="CollisionShape3D" parent="Walls/SafeDoor"]
 shape = SubResource("BS_door")
 
+[node name="WarehouseSW" type="Node3D" parent="Walls"]
+editor_description = "P2 货场西南仓库（可进入，门洞朝东）：搜刮区掩体 + 内部弹药点"
+
+[node name="WallN" type="StaticBody3D" parent="Walls/WarehouseSW"]
+position = Vector3(-12, 1.5, 4)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/WallN"]
+mesh = SubResource("BM_wall_6_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/WallN"]
+shape = SubResource("BS_wall_6_3_05")
+
+[node name="WallS" type="StaticBody3D" parent="Walls/WarehouseSW"]
+position = Vector3(-12, 1.5, 10)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/WallS"]
+mesh = SubResource("BM_wall_6_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/WallS"]
+shape = SubResource("BS_wall_6_3_05")
+
+[node name="WallW" type="StaticBody3D" parent="Walls/WarehouseSW"]
+position = Vector3(-15, 1.5, 7)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/WallW"]
+mesh = SubResource("BM_wall_05_3_6")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/WallW"]
+shape = SubResource("BS_wall_05_3_6")
+
+[node name="WallE_N" type="StaticBody3D" parent="Walls/WarehouseSW"]
+position = Vector3(-9, 1.5, 5)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/WallE_N"]
+mesh = SubResource("BM_wall_05_3_2")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/WallE_N"]
+shape = SubResource("BS_wall_05_3_2")
+
+[node name="WallE_S" type="StaticBody3D" parent="Walls/WarehouseSW"]
+position = Vector3(-9, 1.5, 9)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/WallE_S"]
+mesh = SubResource("BM_wall_05_3_2")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/WallE_S"]
+shape = SubResource("BS_wall_05_3_2")
+
+[node name="Roof" type="StaticBody3D" parent="Walls/WarehouseSW" groups=["navigation_ceiling"]]
+position = Vector3(-12, 3.1, 7)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/Roof"]
+mesh = SubResource("BM_warehouse_roof")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/Roof"]
+shape = SubResource("BS_warehouse_roof")
+
+[node name="Platform" type="StaticBody3D" parent="Walls/WarehouseSW" groups=["navigation_floor"]]
+position = Vector3(-14, 0.4, 7)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseSW/Platform"]
+mesh = SubResource("BM_loading_platform")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/Platform"]
+shape = SubResource("BS_loading_platform")
+
+[node name="Stairs" type="StaticBody3D" parent="Walls/WarehouseSW" groups=["navigation_floor"]]
+position = Vector3(-13, 0, 7)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="Visual" parent="Walls/WarehouseSW/Stairs" instance=ExtResource("22_stairs_concrete")]
+scale = Vector3(1, 0.5, 0.5)
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseSW/Stairs"]
+position = Vector3(0, 0.25, 0.5)
+rotation_degrees = Vector3(26.565, 0, 0)
+shape = SubResource("BS_stair_ramp")
+
+[node name="WarehouseNE" type="Node3D" parent="Walls"]
+editor_description = "P2 货场东北仓库（可进入，门洞朝西）：搜刮区掩体 + 内部医疗点"
+
+[node name="WallS" type="StaticBody3D" parent="Walls/WarehouseNE"]
+position = Vector3(3, 1.5, -8)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseNE/WallS"]
+mesh = SubResource("BM_wall_6_3_05")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/WallS"]
+shape = SubResource("BS_wall_6_3_05")
+
+[node name="WallW_N" type="StaticBody3D" parent="Walls/WarehouseNE"]
+position = Vector3(0, 1.5, -13)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseNE/WallW_N"]
+mesh = SubResource("BM_wall_05_3_2")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/WallW_N"]
+shape = SubResource("BS_wall_05_3_2")
+
+[node name="WallW_S" type="StaticBody3D" parent="Walls/WarehouseNE"]
+position = Vector3(0, 1.5, -9)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseNE/WallW_S"]
+mesh = SubResource("BM_wall_05_3_2")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/WallW_S"]
+shape = SubResource("BS_wall_05_3_2")
+
+[node name="Roof" type="StaticBody3D" parent="Walls/WarehouseNE" groups=["navigation_ceiling"]]
+position = Vector3(3, 3.1, -11)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseNE/Roof"]
+mesh = SubResource("BM_warehouse_roof")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/Roof"]
+shape = SubResource("BS_warehouse_roof")
+
+[node name="Platform" type="StaticBody3D" parent="Walls/WarehouseNE" groups=["navigation_floor"]]
+position = Vector3(5, 0.4, -11)
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/WarehouseNE/Platform"]
+mesh = SubResource("BM_loading_platform")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/Platform"]
+shape = SubResource("BS_loading_platform")
+
+[node name="Stairs" type="StaticBody3D" parent="Walls/WarehouseNE" groups=["navigation_floor"]]
+position = Vector3(4, 0, -11)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="Visual" parent="Walls/WarehouseNE/Stairs" instance=ExtResource("22_stairs_concrete")]
+scale = Vector3(1, 0.5, 0.5)
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/WarehouseNE/Stairs"]
+position = Vector3(0, 0.25, 0.5)
+rotation_degrees = Vector3(26.565, 0, 0)
+shape = SubResource("BS_stair_ramp")
+
 [node name="Triggers" type="Node3D" parent="."]
 
 [node name="SafeExit" type="Area3D" parent="Triggers" groups=["level_trigger"]]
@@ -609,6 +811,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, 0)
 [node name="SpotBack" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, 0)
 
+[node name="SpotWarehouseSW" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0.5, 7)
+
+[node name="SpotWarehouseNE" type="Marker3D" parent="Markers/SupplySpots" groups=["supply_spot"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -11)
+
 [node name="Pickups" type="Node3D" parent="."]
 
 [node name="SupplyYardAmmo" parent="Pickups" instance=ExtResource("3_supply")]
@@ -640,6 +848,16 @@ supply_type = 1
 editor_description = "后门安全屋补给点：弹药（蓝）"
 position = Vector3(44, 0, 2)
 supply_type = 0
+
+[node name="SupplyWarehouseSWAmmo" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "货场西南仓库内部补给点：弹药（蓝）"
+position = Vector3(-14, 0.5, 7)
+supply_type = 0
+
+[node name="SupplyWarehouseNEHealth" parent="Pickups" instance=ExtResource("3_supply")]
+editor_description = "货场东北仓库内部补给点：医疗（红）"
+position = Vector3(5, 0.5, -11)
+supply_type = 1
 
 [node name="Deco" type="Node3D" parent="."]
 editor_description = "P3 环境装饰件：纯视觉（无碰撞/无触发），禁止影响玩家通行/区域触发/补给/刷怪"
@@ -726,3 +944,133 @@ position = Vector3(47, 0, -3.5)
 [node name="BarrelBack" parent="Deco" instance=ExtResource("9_env_barrel")]
 editor_description = "后门安全屋·油桶（装饰）"
 position = Vector3(47, 0, 3.5)
+
+[node name="TacticalCovers" type="Node3D" parent="."]
+editor_description = "P2 战术掩体：正式路障模型 + 简化盒碰撞，参与导航烘焙"
+
+[node name="YardWest" type="StaticBody3D" parent="TacticalCovers"]
+position = Vector3(-5, 0, -4)
+rotation_degrees = Vector3(0, 15, 0)
+
+[node name="Visual" parent="TacticalCovers/YardWest" instance=ExtResource("16_env_barrier")]
+
+[node name="Collision" type="CollisionShape3D" parent="TacticalCovers/YardWest"]
+position = Vector3(0, 0.3, 0)
+shape = SubResource("BS_tactical_cover")
+
+[node name="YardEast" type="StaticBody3D" parent="TacticalCovers"]
+position = Vector3(2, 0, 4)
+rotation_degrees = Vector3(0, -20, 0)
+
+[node name="Visual" parent="TacticalCovers/YardEast" instance=ExtResource("16_env_barrier")]
+
+[node name="Collision" type="CollisionShape3D" parent="TacticalCovers/YardEast"]
+position = Vector3(0, 0.3, 0)
+shape = SubResource("BS_tactical_cover")
+
+[node name="PlazaNorth" type="StaticBody3D" parent="TacticalCovers"]
+position = Vector3(27, 0, -7)
+rotation_degrees = Vector3(0, 25, 0)
+
+[node name="Visual" parent="TacticalCovers/PlazaNorth" instance=ExtResource("16_env_barrier")]
+
+[node name="Collision" type="CollisionShape3D" parent="TacticalCovers/PlazaNorth"]
+position = Vector3(0, 0.3, 0)
+shape = SubResource("BS_tactical_cover")
+
+[node name="PlazaSouth" type="StaticBody3D" parent="TacticalCovers"]
+position = Vector3(33, 0, 7)
+rotation_degrees = Vector3(0, -25, 0)
+
+[node name="Visual" parent="TacticalCovers/PlazaSouth" instance=ExtResource("16_env_barrier")]
+
+[node name="Collision" type="CollisionShape3D" parent="TacticalCovers/PlazaSouth"]
+position = Vector3(0, 0.3, 0)
+shape = SubResource("BS_tactical_cover")
+
+[node name="LocalLighting" type="Node3D" parent="."]
+editor_description = "P2 暖色局部灯：仓库、通道和广场的导航照明"
+
+[node name="WarehouseSW" type="Node3D" parent="LocalLighting"]
+position = Vector3(-12, 2.5, 7)
+
+[node name="Fixture" type="MeshInstance3D" parent="LocalLighting/WarehouseSW"]
+mesh = SubResource("SM_lamp")
+
+[node name="Light" type="OmniLight3D" parent="LocalLighting/WarehouseSW"]
+light_color = Color(1, 0.55, 0.25, 1)
+light_energy = 2.0
+omni_range = 5.0
+
+[node name="WarehouseNE" type="Node3D" parent="LocalLighting"]
+position = Vector3(3, 2.5, -11)
+
+[node name="Fixture" type="MeshInstance3D" parent="LocalLighting/WarehouseNE"]
+mesh = SubResource("SM_lamp")
+
+[node name="Light" type="OmniLight3D" parent="LocalLighting/WarehouseNE"]
+light_color = Color(1, 0.55, 0.25, 1)
+light_energy = 2.0
+omni_range = 5.0
+
+[node name="Corridor" type="Node3D" parent="LocalLighting"]
+position = Vector3(13, 2.2, -2.7)
+
+[node name="Fixture" type="MeshInstance3D" parent="LocalLighting/Corridor"]
+mesh = SubResource("SM_lamp")
+
+[node name="Light" type="OmniLight3D" parent="LocalLighting/Corridor"]
+light_color = Color(1, 0.55, 0.25, 1)
+light_energy = 2.0
+omni_range = 5.0
+
+[node name="Plaza" type="Node3D" parent="LocalLighting"]
+position = Vector3(30, 2.2, -15.7)
+
+[node name="Fixture" type="MeshInstance3D" parent="LocalLighting/Plaza"]
+mesh = SubResource("SM_lamp")
+
+[node name="Light" type="OmniLight3D" parent="LocalLighting/Plaza"]
+light_color = Color(1, 0.55, 0.25, 1)
+light_energy = 2.0
+omni_range = 5.0
+
+[node name="Buildings" type="Node3D" parent="."]
+editor_description = "P1 建筑外壳：纯视觉（无碰撞/无触发），正面贴墙外，禁止影响玩家通行/触发/补给/刷怪"
+
+[node name="YardNorthSmall" parent="Buildings" instance=ExtResource("19_building_small")]
+editor_description = "货场北·仓库外壳（正面朝南贴北墙）"
+position = Vector3(-4, 0, -16.31)
+
+[node name="PlazaNorthLarge" parent="Buildings" instance=ExtResource("21_building_large")]
+editor_description = "广场北·工业楼（正面朝南贴北墙）"
+position = Vector3(29, 0, -16.32)
+
+[node name="YardSouthMedium" parent="Buildings" instance=ExtResource("20_building_medium")]
+editor_description = "货场南·仓库外壳（正面朝北贴南墙）"
+position = Vector3(-5, 0, 14.57)
+rotation_degrees = Vector3(0, 180, 0)
+
+[node name="PlazaSouthSmall" parent="Buildings" instance=ExtResource("19_building_small")]
+editor_description = "广场南·工业楼（正面朝北贴南墙）"
+position = Vector3(29, 0, 18.31)
+rotation_degrees = Vector3(0, 180, 0)
+
+[node name="BackEastMedium" parent="Buildings" instance=ExtResource("20_building_medium")]
+editor_description = "后门东·背景建筑（正面朝西贴东墙）"
+position = Vector3(40.57, 0, 0)
+rotation_degrees = Vector3(0, -90, 0)
+
+[node name="SafeWestSmall" parent="Buildings" instance=ExtResource("19_building_small")]
+editor_description = "安全屋西·背景建筑（正面朝东贴西墙）"
+position = Vector3(-28.31, 0, 0)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="NorthSkylineLarge" parent="Buildings" instance=ExtResource("21_building_large")]
+editor_description = "北远景·天际线剪影（雾中）"
+position = Vector3(-3, 0, -20.32)
+
+[node name="EastSkylineLarge" parent="Buildings" instance=ExtResource("21_building_large")]
+editor_description = "东远景·天际线剪影（雾中）"
+position = Vector3(52.32, 0, -5)
+rotation_degrees = Vector3(0, -90, 0)

@@ -42,6 +42,7 @@
 | 2026-08-06 | `assets/textures/environment/tex_metal_wall_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 金属墙板贴皮（512×512） |
 | 2026-08-06 | `assets/textures/environment/tex_rust_door_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 锈铁门板贴皮（512×512） |
 | 2026-08-06 | `assets/textures/environment/tex_rust_metal_01.png` | （程序化生成） | 项目自研（gen_env_textures.py，Pillow） | 非外部素材 | 内部生成 | 锈金属通用（备用） |
+| 2026-08-14 | `assets/models/environment/env_block_*.glb`（128 个）、`env_building_*.glb`（3 个）、`env_prop_*.glb`（5 个） | Downtown City MegaKit[Standard]（315 件中的免费子集） | Quaternius | https://quaternius.com/packs/downtowncitymegakit.html（下载：quaternius.itch.io/downtown-city-megakit） | CC0 | P4 建筑模块（纯色化：去 Normal/ORM 纹理、材质合并 ≤2；预建建筑减面到 ≤5000 tris） |
 | （待入库） | `props/prop_*.glb` | FPS Kit / City Kit | Kenney | https://kenney.nl/assets/fps-kit | CC0 | 道具箱（颜色已修正：弹药黄/橙、血包医疗绿；模型 P4 替换未入库） |
 
 ## 最终美术收口（2026-08-10）
@@ -121,6 +122,17 @@
 - **验收**：结构自检 PASS（Walls 23=22 墙+门、Triggers 5、PlayerSpawns 2、HordeSpawns 16、SupplySpots 5、Pickups 6、Deco 20 无碰撞）；`--import` 0 ERROR；check_all_scripts/scenes OK；debug_level_progress 22/22 PASS；debug_wave_flow 3 波通关。
 - **工具脚本**：`_tmp_art_xjtf_dl/gen_env_textures.py`、`_tmp_art_xjtf_dl/gen_env_glb.py`（临时，不入库）。
 
+## 处理说明（M3-ART-P4）
+
+- **任务**：为《铁锈仓库》地图补充建筑模块（P0 资产准备）。原计划 UMB / Kenney City Kit 均已下架（`ultimatemodularbuildings.html` 404、`city-kit` 404，与 P3 同坑），改用 Quaternius 官方 **Downtown City MegaKit**（CC0，2026-05 新包，315 模块化城市件）。
+- **来源**：itch.io 免费版 `Downtown City MegaKit[Standard].zip`（234.8MB，60-70% 模型子集）。下载脚本 `_tmp_art_xjtf_dl/dl_downtown.py`（itch.io 免登录流程：GET 页 csrf → POST download_url → GET download 页 upload_id → POST file/<id> 拿 R2 签名直链 → 下载）。
+- **格式**：取 `Exports/glTF (Godot)`（.gltf+.bin+外部 PNG），比 FBX 更适合 Godot 原生导入。
+- **纯色化**（art 铁律：纯色/顶点色、禁 PBR 多层、材质 ≤2）：`gen_building_glb.py`（trimesh 按材质名分组：含 "glass" 归玻璃 → 深蓝灰第 2 材质；其余合并为主体 → 按模型名前缀映射纯色：brick→砖红 #7A4A2E、metal/concrete→灰蓝 #3A3F4A、street/sidewalk→沥青 #2A3140、roof→深灰、trim/cornice→灰褐、door→木褐 #6B4A32）。去 Normal/ORM 纹理、材质合并到 ≤2、底部对齐 Y=0。
+- **减面**（3 个预建建筑 tris 超标）：pymeshlab Quadric Edge Collapse，`preserveboundary=False`（建筑窗户洞是边界，True 会卡住减不动）→ 减到 ≤5000（large 4800 / medium 4902 / small 4795，原 45122/25612/18344）。
+- **入库**：136 个 GLB（`env_block_*`×128、`env_building_*`×3、`env_prop_*`×5），总 1.67MB。`check_model_spec.gd` 170/170 PASS（tris 预算 + 材质 ≤2 + 无骨骼要求全部满足）。
+- **临时脚本**：`_tmp_art_xjtf_dl/gen_building_glb.py`、`dl_downtown.py`（临时，不入库）。
+- **备注**：Decal_*（路面标线 18 个）与纹理 PNG 未入库（工业仓库主题不需要斑马线/交通标线）；预建建筑减面后窗户洞被填充为实心体（纯色块可接受）。
+
 ## 待办
 
 - [x] 下载 Quaternius Ultimate Monsters → 评估：包内无 Zombie，跳过
@@ -131,3 +143,4 @@
 - [x] R2 普通丧尸壮型（项目自研重建，已接入普通丧尸随机视觉变体）
 - [x] 道具 P4 模型替换（弹药箱/医疗包正式 GLB，碰撞与玩法结构不变）
 - [x] 最终资产按替换清单命名并补全来源/生成方式
+- [x] **M3-ART-P4 建筑模块**：Downtown City MegaKit[Standard]（CC0）→ 纯色低模 GLB 入库（136 个：128 模块块 + 3 预建建筑 + 5 道具）；记账
