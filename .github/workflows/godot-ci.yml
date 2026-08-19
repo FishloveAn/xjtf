@@ -1,0 +1,96 @@
+name: Godot CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Godot project
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      GODOT_VERSION: 4.7.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Godot
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archivePath = Join-Path $env:RUNNER_TEMP 'godot.zip'
+          $godotDirectory = Join-Path $env:RUNNER_TEMP 'godot'
+          $downloadUrl = "https://github.com/godotengine/godot/releases/download/$($env:GODOT_VERSION)-stable/Godot_v$($env:GODOT_VERSION)-stable_win64.exe.zip"
+
+          $downloadParams = @{
+            Uri = $downloadUrl
+            OutFile = $archivePath
+          }
+          Invoke-WebRequest @downloadParams
+
+          $expandParams = @{
+            LiteralPath = $archivePath
+            DestinationPath = $godotDirectory
+          }
+          Expand-Archive @expandParams
+
+          $godot = Get-ChildItem -LiteralPath $godotDirectory -Filter 'Godot*_win64_console.exe' -File -Recurse |
+            Select-Object -First 1
+          if ($null -eq $godot) {
+            throw 'Godot 可执行文件未找到'
+          }
+
+          "GODOT_BIN=$($godot.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $versionArguments = @('--version')
+          & $godot.FullName @versionArguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Godot 版本检查失败，退出码：$LASTEXITCODE"
+          }
+
+      - name: Import project
+        shell: pwsh
+        run: |
+          $arguments = @('--headless', '--path', '.', '--import')
+          & $env:GODOT_BIN @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Godot 项目导入失败，退出码：$LASTEXITCODE"
+          }
+
+      - name: Run validation suite
+        shell: pwsh
+        run: |
+          function Invoke-GodotScript {
+            param([Parameter(Mandatory)][string] $ScriptPath)
+
+            $arguments = @('--headless', '--path', '.', '--script', $ScriptPath)
+            & $env:GODOT_BIN @arguments
+            if ($LASTEXITCODE -ne 0) {
+              throw "$ScriptPath 验证失败，退出码：$LASTEXITCODE"
+            }
+          }
+
+          $scripts = @(
+            'check_all_scripts.gd'
+            'check_all_scenes.gd'
+            'tools/check_model_spec.gd'
+            'tools/test_rustyard_building_details.gd'
+            'tools/test_rustyard_stair_traversal.gd'
+            'tools/debug_rustyard_navigation.gd'
+            'tools/debug_level_progress.gd'
+            'tools/debug_wave_flow.gd'
+          )
+
+          foreach ($script in $scripts) {
+            Invoke-GodotScript -ScriptPath $script
+          }
