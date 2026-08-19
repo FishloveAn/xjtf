@@ -35,6 +35,16 @@ func _run() -> void:
 		map_rid, Vector3(-22.0, 0.0, 0.0), Vector3(-10.0, 0.0, 0.0), true)
 	_check(server_path.size() > 1, "NavigationServer 可查询安全屋到货场路径")
 	_check(_path_crosses_door(server_path), "NavigationServer 路径穿过已开启门洞")
+	var warehouse_sw_path := NavigationServer3D.map_get_path(
+		map_rid, Vector3(-8.0, 0.0, 7.0), Vector3(-14.0, 0.0, 7.0), true)
+	_check(warehouse_sw_path.size() > 1, "西南仓库入口到低平台可达")
+	var warehouse_ne_path := NavigationServer3D.map_get_path(
+		map_rid, Vector3(-1.0, 0.0, -11.0), Vector3(5.0, 0.0, -11.0), true)
+	_check(warehouse_ne_path.size() > 1, "东北仓库入口到低平台可达")
+	var cover_path := NavigationServer3D.map_get_path(
+		map_rid, Vector3(-8.0, 0.0, -4.0), Vector3(-2.0, 0.0, -4.0), true)
+	_check(cover_path.size() > 2 and _path_avoids_point(cover_path, Vector2(-5.0, -4.0), 0.55),
+		"货场战术路障参与导航烘焙并产生绕行")
 
 	# 第一轮走已开启的安全门。若 SafeDoor 被烘进导航源，这里不会产生穿门路径。
 	player.global_position = Vector3(-10.0, 0.0, 0.0)
@@ -91,6 +101,19 @@ func _path_crosses_door(path: PackedVector3Array) -> bool:
 		if absf(point.x + 16.0) < 0.8 and absf(point.z) < 1.4:
 			return true
 	return false
+
+
+func _path_avoids_point(path: PackedVector3Array, point: Vector2, clearance: float) -> bool:
+	for index in range(path.size() - 1):
+		var start := Vector2(path[index].x, path[index].z)
+		var end := Vector2(path[index + 1].x, path[index + 1].z)
+		var segment := end - start
+		var length_squared := segment.length_squared()
+		var ratio := 0.0 if is_zero_approx(length_squared) else clampf(
+			(point - start).dot(segment) / length_squared, 0.0, 1.0)
+		if point.distance_to(start + segment * ratio) < clearance:
+			return false
+	return true
 
 
 func _check(condition: bool, label: String) -> void:

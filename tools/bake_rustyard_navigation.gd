@@ -41,7 +41,9 @@ func _run() -> void:
 
 	var obstacles: Array[Rect2] = []
 	for body in rustyard.find_children("*", "StaticBody3D", true, false):
-		if body.name == "Ground" or body == safe_door:
+		if (body.name == "Ground" or body == safe_door
+				or body.is_in_group("navigation_floor")
+				or body.is_in_group("navigation_ceiling")):
 			continue
 		var collision := body.get_node_or_null("Collision") as CollisionShape3D
 		if collision == null or collision.disabled or not (collision.shape is BoxShape3D):
